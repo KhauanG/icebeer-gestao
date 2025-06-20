@@ -23,11 +23,11 @@
     <link rel="stylesheet" href="styles.css">
     
     <!-- Preload Critical Resources -->
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js" as="script">
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js" as="script" crossorigin="anonymous">
     <link rel="prefetch" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js">
     
     <!-- Security Headers -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://*.googleapis.com https://*.firebaseapp.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://*.googleapis.com https://*.firebaseapp.com https://*.firebaseio.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https:; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebaseio.com wss://*.firebaseio.com;">
 </head>
 <body>
     <!-- Progress Indicator -->
@@ -210,7 +210,10 @@
                         💾 Backup
                     </button>
                     <button class="action-btn" onclick="runSystemDiagnostic()">
-                        🧪 Diagnóstico
+                        🧪 Diagnóstico Completo
+                    </button>
+                    <button class="action-btn secondary" onclick="createSampleData()">
+                        📊 Criar Dados Exemplo
                     </button>
                 </div>
             </div>
@@ -435,9 +438,9 @@
     </div>
 
     <!-- External Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js" defer crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer crossorigin="anonymous"></script>
 
     <!-- Main Script -->
     <script type="module" src="script.js"></script>
@@ -454,19 +457,21 @@
                         // Update available
                         registration.addEventListener('updatefound', () => {
                             const newWorker = registration.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // Show update notification
-                                    if (window.notificationManager) {
-                                        window.notificationManager.show(
-                                            'Nova versão disponível!', 
-                                            'Recarregue a página para usar a versão mais recente', 
-                                            'info', 
-                                            10000
-                                        );
+                            if (newWorker) {
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        // Show update notification
+                                        if (window.notificationManager) {
+                                            window.notificationManager.show(
+                                                'Nova versão disponível!', 
+                                                'Recarregue a página para usar a versão mais recente', 
+                                                'info', 
+                                                10000
+                                            );
+                                        }
                                     }
-                                }
-                            });
+                                });
+                            }
                         });
                     })
                     .catch(error => {
@@ -480,7 +485,10 @@
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            document.getElementById('installPrompt').classList.add('show');
+            const installPrompt = document.getElementById('installPrompt');
+            if (installPrompt) {
+                installPrompt.classList.add('show');
+            }
         });
 
         window.installPWA = async function() {
@@ -489,25 +497,22 @@
                 const { outcome } = await deferredPrompt.userChoice;
                 console.log(`PWA install ${outcome}`);
                 deferredPrompt = null;
-                document.getElementById('installPrompt').classList.remove('show');
+                const installPrompt = document.getElementById('installPrompt');
+                if (installPrompt) {
+                    installPrompt.classList.remove('show');
+                }
             }
         };
 
         window.dismissInstallPrompt = function() {
-            document.getElementById('installPrompt').classList.remove('show');
+            const installPrompt = document.getElementById('installPrompt');
+            if (installPrompt) {
+                installPrompt.classList.remove('show');
+            }
             deferredPrompt = null;
         };
 
-        // Add system diagnostic function
-        window.runSystemDiagnostic = function() {
-            if (window.fbTest) {
-                window.fbTest.runFullDiagnostic();
-            } else {
-                console.log('⚠️ Sistema de diagnóstico não está disponível');
-            }
-        };
-
-        // Add error handling
+        // Error handling
         window.addEventListener('error', (e) => {
             console.error('Global error:', e.error);
             if (window.notificationManager) {
@@ -529,6 +534,22 @@
                 );
             }
         });
+
+        // Prevent zoom on iOS
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            const now = (new Date()).getTime();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
     </script>
 </body>
 </html>

@@ -1,36 +1,10 @@
 // ===============================
-// 🔥 ICE BEER v4.0 - SISTEMA COMPLETO
+// 🔥 ICE BEER v4.0 - SISTEMA COMPLETO CORRIGIDO
 // Firebase Integrado + Auto-Setup + Debug Tools
 // ===============================
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { 
-    getAuth, 
-    signInWithEmailAndPassword, 
-    signOut, 
-    onAuthStateChanged 
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { 
-    getFirestore, 
-    collection, 
-    addDoc, 
-    query, 
-    where, 
-    getDocs, 
-    doc, 
-    setDoc, 
-    getDoc, 
-    deleteDoc, 
-    orderBy, 
-    limit,
-    serverTimestamp,
-    and,
-    or,
-    Timestamp
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-
 // ===============================
-// CONFIGURAÇÃO FIREBASE
+// IMPORTS FIREBASE
 // ===============================
 
 const firebaseConfig = {
@@ -43,432 +17,79 @@ const firebaseConfig = {
     measurementId: "G-1CY31TG5YM"
 };
 
-// Inicializar Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Variáveis globais para Firebase
+let app, auth, db;
+let isFirebaseInitialized = false;
 
 // ===============================
-// 🤖 AUTO SETUP FIREBASE
+// INICIALIZAÇÃO FIREBASE
 // ===============================
 
-class FirebaseAutoSetup {
-    constructor(db, auth) {
-        this.db = db;
-        this.auth = auth;
-        this.setupComplete = false;
-        this.requiredCollections = [
-            'sales_entries',
-            'targets', 
-            'user_profiles',
-            'system_logs',
-            'system_settings',
-            'notifications',
-            'offline_queue',
-            'reports',
-            'cache_invalidation'
-        ];
-    }
+async function initializeFirebase() {
+    try {
+        if (isFirebaseInitialized) return { app, auth, db };
 
-    async initializeSystem(user) {
-        if (this.setupComplete) return;
+        console.log('🔥 Inicializando Firebase...');
         
-        console.log('🤖 Firebase Auto Setup: Iniciando configuração...');
-        
-        try {
-            await this.createUserProfile(user);
-            await this.createSystemCollections();
-            await this.createInitialSettings();
-            await this.logSystemStart(user);
-            await this.createWelcomeNotification(user);
-            
-            this.setupComplete = true;
-            console.log('✅ Firebase Auto Setup: Configuração concluída!');
-            
-            return true;
-        } catch (error) {
-            console.error('❌ Firebase Auto Setup: Erro:', error);
-            return false;
-        }
-    }
+        // Carregar módulos Firebase dinamicamente
+        const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+        const { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            signOut, 
+            onAuthStateChanged 
+        } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+        const { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            query, 
+            where, 
+            getDocs, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            deleteDoc, 
+            orderBy, 
+            limit,
+            serverTimestamp,
+            Timestamp
+        } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
-    async createUserProfile(user) {
-        const userEmail = user.email;
-        const userSegments = {
-            'conveniencias@icebeer.com': { segment: 'conveniencias', name: 'Gestor Conveniências' },
-            'petiscarias@icebeer.com': { segment: 'petiscarias', name: 'Gestor Petiscarias' },
-            'diskchopp@icebeer.com': { segment: 'diskchopp', name: 'Gestor Disk Chopp' },
-            'executivo@icebeer.com': { segment: 'executive', name: 'Dashboard Executiva' }
+        // Inicializar Firebase
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+
+        // Expor globalmente
+        window.firebase = {
+            app, auth, db,
+            signInWithEmailAndPassword,
+            signOut,
+            onAuthStateChanged,
+            collection,
+            addDoc,
+            query,
+            where,
+            getDocs,
+            doc,
+            setDoc,
+            getDoc,
+            deleteDoc,
+            orderBy,
+            limit,
+            serverTimestamp,
+            Timestamp
         };
 
-        const userData = userSegments[userEmail];
-        if (!userData) return;
-
-        const profileDoc = {
-            email: userEmail,
-            name: userData.name,
-            segment: userData.segment,
-            createdAt: serverTimestamp(),
-            lastLogin: serverTimestamp(),
-            settings: {
-                theme: 'default',
-                notifications: true,
-                language: 'pt-BR',
-                timezone: 'America/Sao_Paulo'
-            },
-            permissions: {
-                canCreateSales: true,
-                canSetTargets: true,
-                canViewReports: true,
-                canExportData: userData.segment === 'executive'
-            }
-        };
-
-        await setDoc(doc(this.db, 'user_profiles', user.uid), profileDoc);
-        console.log('👤 Profile criado:', userData.name);
-    }
-
-    async createSystemCollections() {
-        for (const collectionName of this.requiredCollections) {
-            await this.ensureCollectionExists(collectionName);
-        }
-    }
-
-    async ensureCollectionExists(collectionName) {
-        try {
-            const testDoc = doc(this.db, collectionName, '_system_test');
-            await setDoc(testDoc, {
-                created: serverTimestamp(),
-                purpose: 'Collection initialization',
-                version: '4.0.0'
-            });
-            
-            // Deletar documento de teste
-            await deleteDoc(testDoc);
-            console.log(`📁 Coleção verificada: ${collectionName}`);
-        } catch (error) {
-            console.warn(`⚠️ Erro ao verificar coleção ${collectionName}:`, error);
-        }
-    }
-
-    async createInitialSettings() {
-        const settings = {
-            app_version: '4.0.0',
-            maintenance_mode: false,
-            max_sales_value: 1000000,
-            max_target_value: 10000000,
-            date_range: {
-                start: '2025-06-01',
-                end: '2028-12-31'
-            },
-            business_segments: {
-                conveniencias: { name: 'Conveniências Ice Beer', stores: ['Loja 1', 'Loja 2', 'Loja 3'] },
-                petiscarias: { name: 'Petiscarias Ice Beer', stores: ['Loja 1', 'Loja 2'] },
-                diskchopp: { name: 'Disk Chopp Ice Beer', stores: ['Delivery'] }
-            },
-            cache_settings: {
-                ttl: 300000, // 5 minutos
-                max_entries: 100
-            },
-            created: serverTimestamp(),
-            updated: serverTimestamp()
-        };
-
-        await setDoc(doc(this.db, 'system_settings', 'app_config'), settings);
-        console.log('⚙️ Configurações iniciais criadas');
-    }
-
-    async logSystemStart(user) {
-        const logEntry = {
-            level: 'info',
-            message: 'Sistema Ice Beer v4.0 inicializado',
-            user: user.email,
-            timestamp: serverTimestamp(),
-            details: {
-                userAgent: navigator.userAgent,
-                url: window.location.href,
-                version: '4.0.0'
-            }
-        };
-
-        await addDoc(collection(this.db, 'system_logs'), logEntry);
-        console.log('📝 Log de inicialização criado');
-    }
-
-    async createWelcomeNotification(user) {
-        const welcomeNotification = {
-            title: '🍺 Bem-vindo ao Ice Beer v4.0!',
-            message: 'Sistema carregado com sucesso. Todas as funcionalidades estão operacionais.',
-            type: 'success',
-            targetUser: user.email,
-            read: false,
-            created: serverTimestamp(),
-            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 dias
-        };
-
-        await addDoc(collection(this.db, 'notifications'), welcomeNotification);
-        console.log('🔔 Notificação de boas-vindas criada');
-    }
-
-    async createSampleData(userSegment) {
-        if (userSegment === 'executive') return; // Executivo não precisa de dados de exemplo
-
-        const currentMonth = getCurrentMonth();
-        const sampleEntry = {
-            segment: userSegment,
-            store: getFirstStoreForSegment(userSegment),
-            value: 5000,
-            entryDate: Timestamp.fromDate(new Date()),
-            month: currentMonth,
-            entryType: 'single',
-            notes: 'Dados de exemplo - Auto Setup',
-            user: this.auth.currentUser.email,
-            createdAt: serverTimestamp()
-        };
-
-        await addDoc(collection(this.db, 'sales_entries'), sampleEntry);
-
-        const sampleTarget = {
-            segment: userSegment,
-            store: getFirstStoreForSegment(userSegment),
-            month: currentMonth,
-            type: 'monthly',
-            value: 50000,
-            user: this.auth.currentUser.email,
-            date: serverTimestamp()
-        };
-
-        await setDoc(doc(this.db, 'targets', `${userSegment}_${sampleTarget.store}_${currentMonth}_monthly`), sampleTarget);
+        isFirebaseInitialized = true;
+        console.log('✅ Firebase inicializado com sucesso!');
         
-        console.log('📊 Dados de exemplo criados');
-    }
-}
-
-// ===============================
-// 🧪 FERRAMENTAS DE TESTE FIREBASE
-// ===============================
-
-class FirebaseTestTools {
-    constructor(db, auth) {
-        this.db = db;
-        this.auth = auth;
-        this.testResults = [];
-    }
-
-    async runFullDiagnostic() {
-        console.log('🧪 Iniciando diagnóstico completo do Firebase...');
-        this.testResults = [];
-
-        await this.testConnection();
-        await this.testAuth();
-        await this.testFirestoreRules();
-        await this.testCollections();
-        await this.testValidations();
-        await this.testPerformance();
-
-        this.displayResults();
-        return this.testResults;
-    }
-
-    async testConnection() {
-        try {
-            const testDoc = doc(this.db, 'system_logs', 'connection_test');
-            await setDoc(testDoc, { test: true, timestamp: serverTimestamp() });
-            await deleteDoc(testDoc);
-            
-            this.addResult('connection', 'success', 'Conexão com Firestore OK');
-        } catch (error) {
-            this.addResult('connection', 'error', `Erro de conexão: ${error.message}`);
-        }
-    }
-
-    async testAuth() {
-        try {
-            if (this.auth.currentUser) {
-                this.addResult('auth', 'success', `Autenticado como: ${this.auth.currentUser.email}`);
-            } else {
-                this.addResult('auth', 'warning', 'Nenhum usuário autenticado');
-            }
-        } catch (error) {
-            this.addResult('auth', 'error', `Erro de autenticação: ${error.message}`);
-        }
-    }
-
-    async testFirestoreRules() {
-        if (!this.auth.currentUser) {
-            this.addResult('rules', 'warning', 'Não é possível testar regras sem autenticação');
-            return;
-        }
-
-        try {
-            // Teste de leitura
-            const testQuery = query(collection(this.db, 'sales_entries'), limit(1));
-            await getDocs(testQuery);
-            this.addResult('rules', 'success', 'Regras de leitura OK');
-
-            // Teste de escrita
-            const testData = {
-                segment: getUserSegment(this.auth.currentUser.email),
-                store: 'Loja 1',
-                value: 100,
-                entryDate: Timestamp.fromDate(new Date()),
-                month: getCurrentMonth(),
-                entryType: 'single',
-                user: this.auth.currentUser.email,
-                notes: 'Teste de regras'
-            };
-
-            const docRef = await addDoc(collection(this.db, 'sales_entries'), testData);
-            await deleteDoc(docRef);
-            this.addResult('rules', 'success', 'Regras de escrita OK');
-        } catch (error) {
-            this.addResult('rules', 'error', `Erro nas regras: ${error.message}`);
-        }
-    }
-
-    async testCollections() {
-        const collections = ['sales_entries', 'targets', 'user_profiles', 'system_logs'];
-        
-        for (const collectionName of collections) {
-            try {
-                const testQuery = query(collection(this.db, collectionName), limit(1));
-                await getDocs(testQuery);
-                this.addResult('collections', 'success', `Coleção ${collectionName} acessível`);
-            } catch (error) {
-                this.addResult('collections', 'error', `Erro na coleção ${collectionName}: ${error.message}`);
-            }
-        }
-    }
-
-    async testValidations() {
-        if (!this.auth.currentUser) return;
-
-        // Teste de validação de valor
-        try {
-            const invalidData = {
-                segment: 'conveniencias',
-                store: 'Loja Inexistente',
-                value: -100,
-                entryDate: Timestamp.fromDate(new Date()),
-                month: getCurrentMonth(),
-                entryType: 'single',
-                user: this.auth.currentUser.email
-            };
-
-            await addDoc(collection(this.db, 'sales_entries'), invalidData);
-            this.addResult('validation', 'error', 'Validações não estão funcionando - dados inválidos aceitos');
-        } catch (error) {
-            this.addResult('validation', 'success', 'Validações funcionando - dados inválidos rejeitados');
-        }
-    }
-
-    async testPerformance() {
-        const startTime = performance.now();
-        
-        try {
-            const testQuery = query(collection(this.db, 'sales_entries'), limit(10));
-            await getDocs(testQuery);
-            
-            const endTime = performance.now();
-            const duration = endTime - startTime;
-            
-            if (duration < 1000) {
-                this.addResult('performance', 'success', `Query rápida: ${duration.toFixed(2)}ms`);
-            } else {
-                this.addResult('performance', 'warning', `Query lenta: ${duration.toFixed(2)}ms`);
-            }
-        } catch (error) {
-            this.addResult('performance', 'error', `Erro no teste de performance: ${error.message}`);
-        }
-    }
-
-    addResult(category, status, message) {
-        this.testResults.push({ category, status, message, timestamp: new Date() });
-        
-        const icon = status === 'success' ? '✅' : status === 'warning' ? '⚠️' : '❌';
-        console.log(`${icon} [${category.toUpperCase()}] ${message}`);
-    }
-
-    displayResults() {
-        console.log('\n🧪 RELATÓRIO DE DIAGNÓSTICO:');
-        console.log('============================');
-        
-        const summary = this.testResults.reduce((acc, result) => {
-            acc[result.status] = (acc[result.status] || 0) + 1;
-            return acc;
-        }, {});
-
-        console.log(`✅ Sucessos: ${summary.success || 0}`);
-        console.log(`⚠️ Avisos: ${summary.warning || 0}`);
-        console.log(`❌ Erros: ${summary.error || 0}`);
-        console.log('============================\n');
-
-        return summary;
-    }
-
-    // Métodos de teste individuais
-    async createTestData() {
-        if (!this.auth.currentUser) {
-            console.log('❌ Usuário deve estar autenticado para criar dados de teste');
-            return;
-        }
-
-        const userSegment = getUserSegment(this.auth.currentUser.email);
-        const testData = {
-            segment: userSegment,
-            store: getFirstStoreForSegment(userSegment),
-            value: Math.floor(Math.random() * 10000) + 1000,
-            entryDate: Timestamp.fromDate(new Date()),
-            month: getCurrentMonth(),
-            entryType: 'single',
-            notes: 'Dados de teste - Debug Tools',
-            user: this.auth.currentUser.email,
-            createdAt: serverTimestamp()
-        };
-
-        try {
-            const docRef = await addDoc(collection(this.db, 'sales_entries'), testData);
-            console.log('✅ Dados de teste criados:', docRef.id);
-            return docRef.id;
-        } catch (error) {
-            console.error('❌ Erro ao criar dados de teste:', error);
-        }
-    }
-
-    async cleanupTestData() {
-        if (!this.auth.currentUser) return;
-
-        try {
-            const testQuery = query(
-                collection(this.db, 'sales_entries'),
-                where('notes', '==', 'Dados de teste - Debug Tools')
-            );
-            
-            const snapshot = await getDocs(testQuery);
-            const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-            
-            await Promise.all(deletePromises);
-            console.log(`✅ ${snapshot.docs.length} registros de teste removidos`);
-        } catch (error) {
-            console.error('❌ Erro ao limpar dados de teste:', error);
-        }
-    }
-
-    async checkCachePerformance() {
-        const iterations = 5;
-        const times = [];
-
-        for (let i = 0; i < iterations; i++) {
-            const start = performance.now();
-            await queryService.getSalesEntries({ limit: 10 });
-            const end = performance.now();
-            times.push(end - start);
-        }
-
-        const average = times.reduce((a, b) => a + b) / times.length;
-        console.log(`📊 Performance média de cache: ${average.toFixed(2)}ms`);
-        
-        return { average, times };
+        return { app, auth, db };
+    } catch (error) {
+        console.error('❌ Erro ao inicializar Firebase:', error);
+        showError('Erro ao conectar com Firebase. Verifique sua conexão.');
+        throw error;
     }
 }
 
@@ -517,13 +138,6 @@ let currentFilters = {
 };
 
 let chartInstances = {};
-
-// ===============================
-// INSTÂNCIAS GLOBAIS
-// ===============================
-
-const firebaseSetup = new FirebaseAutoSetup(db, auth);
-const fbTest = new FirebaseTestTools(db, auth);
 
 // ===============================
 // CLASSES DE GERENCIAMENTO
@@ -757,6 +371,7 @@ class QueryService {
         }
 
         try {
+            const { collection, query, where, orderBy, limit, getDocs } = window.firebase;
             let baseQuery = collection(db, 'sales_entries');
             const constraints = [];
 
@@ -771,8 +386,8 @@ class QueryService {
             }
 
             if (filters.startDate && filters.endDate) {
-                const startTimestamp = Timestamp.fromDate(new Date(filters.startDate));
-                const endTimestamp = Timestamp.fromDate(new Date(filters.endDate + 'T23:59:59'));
+                const startTimestamp = window.firebase.Timestamp.fromDate(new Date(filters.startDate));
+                const endTimestamp = window.firebase.Timestamp.fromDate(new Date(filters.endDate + 'T23:59:59'));
                 constraints.push(where('entryDate', '>=', startTimestamp));
                 constraints.push(where('entryDate', '<=', endTimestamp));
             }
@@ -811,6 +426,7 @@ class QueryService {
         }
 
         try {
+            const { doc, getDoc } = window.firebase;
             const targetId = `${segment}_${store}_${month}_${type}`;
             const targetDoc = await getDoc(doc(db, 'targets', targetId));
             const value = targetDoc.exists() ? targetDoc.data().value : 0;
@@ -986,6 +602,10 @@ function showAlert(alertId, message, type) {
     }
 }
 
+function showError(message) {
+    notificationManager.show('Erro', message, 'error');
+}
+
 function clearFormInputs(inputIds) {
     inputIds.forEach(id => setElementValue(id, ''));
 }
@@ -1011,7 +631,8 @@ window.handleLogin = async function() {
     setLoading('login', true);
     
     try {
-        await signInWithEmailAndPassword(auth, email, password);
+        await initializeFirebase();
+        await window.firebase.signInWithEmailAndPassword(auth, email, password);
         console.log('✅ Login realizado com sucesso!');
     } catch (error) {
         console.error('❌ Erro no login:', error);
@@ -1026,7 +647,7 @@ window.handleLogout = async function() {
     try {
         cacheManager.clear();
         if (auth) {
-            await signOut(auth);
+            await window.firebase.signOut(auth);
         }
         console.log('✅ Logout realizado com sucesso');
     } catch (error) {
@@ -1243,159 +864,7 @@ function populateStoreSelects(stores) {
 }
 
 // ===============================
-// HANDLERS DE FILTROS
-// ===============================
-
-window.handleSegmentChange = function() {
-    currentFilters.segment = getElementValue('filterSegment');
-    updateDependentFilters();
-    resetDependentFilters();
-};
-
-window.handleStoreChange = function() {
-    currentFilters.store = getElementValue('filterStore');
-};
-
-window.handleMonthChange = async function() {
-    currentFilters.month = getElementValue('filterMonth');
-    currentFilters.week = '';
-    
-    const filterWeek = getElementById('filterWeek');
-    if (filterWeek && currentFilters.segment && currentFilters.month) {
-        await updateWeeksFilter();
-    }
-};
-
-window.handlePeriodChange = function() {
-    const period = getElementValue('filterPeriod');
-    currentFilters.period = period;
-    
-    if (period === 'week') {
-        showElement('weekFilter');
-        hideElement('customDateRange');
-        if (currentFilters.segment && currentFilters.month) {
-            updateWeeksFilter();
-        }
-    } else if (period === 'range') {
-        hideElement('weekFilter');
-        showElement('customDateRange');
-    } else {
-        hideElement('weekFilter');
-        hideElement('customDateRange');
-    }
-    
-    clearFiltersState();
-};
-
-window.handleDateRangeChange = function() {
-    currentFilters.startDate = getElementValue('startDate');
-    currentFilters.endDate = getElementValue('endDate');
-};
-
-window.handleWeekChange = function() {
-    currentFilters.week = getElementValue('filterWeek');
-};
-
-function updateDependentFilters() {
-    const segment = currentFilters.segment;
-    const filterStore = getElementById('filterStore');
-    
-    if (filterStore) {
-        filterStore.innerHTML = '<option value="">Todas as lojas</option>';
-        
-        if (segment && businessData[segment]) {
-            const stores = businessData[segment].stores;
-            stores.forEach(store => {
-                const option = document.createElement('option');
-                option.value = store;
-                option.textContent = store;
-                filterStore.appendChild(option);
-            });
-        }
-    }
-}
-
-function resetDependentFilters() {
-    currentFilters.store = '';
-    currentFilters.week = '';
-    
-    setElementValue('filterStore', '');
-    setElementValue('filterWeek', '');
-    
-    hideElement('weekFilter');
-    hideElement('customDateRange');
-}
-
-async function updateWeeksFilter() {
-    const filterWeek = getElementById('filterWeek');
-    if (!filterWeek) return;
-    
-    filterWeek.innerHTML = '<option value="">Carregando semanas...</option>';
-    
-    try {
-        const weeks = await queryService.getAvailableWeeks(currentFilters.segment, currentFilters.month);
-        
-        filterWeek.innerHTML = '<option value="">Todas as semanas</option>';
-        
-        if (weeks.length > 0) {
-            weeks.forEach(week => {
-                const option = document.createElement('option');
-                option.value = week.identifier;
-                option.textContent = week.label;
-                filterWeek.appendChild(option);
-            });
-        } else {
-            const noDataOption = document.createElement('option');
-            noDataOption.value = '';
-            noDataOption.textContent = 'Nenhuma semana encontrada';
-            noDataOption.disabled = true;
-            filterWeek.appendChild(noDataOption);
-        }
-    } catch (error) {
-        console.error('❌ Erro ao carregar semanas:', error);
-        filterWeek.innerHTML = '<option value="">Erro ao carregar</option>';
-    }
-}
-
-function clearFiltersState() {
-    currentFilters.startDate = '';
-    currentFilters.endDate = '';
-    currentFilters.week = '';
-    setElementValue('startDate', '');
-    setElementValue('endDate', '');
-    setElementValue('filterWeek', '');
-}
-
-window.clearFilters = function() {
-    Object.keys(currentFilters).forEach(key => {
-        if (key !== 'segment' && currentUserData.segment !== 'executive') {
-            currentFilters[key] = '';
-        } else if (currentUserData.segment === 'executive') {
-            currentFilters[key] = '';
-        }
-    });
-    
-    const filterElements = ['filterSegment', 'filterStore', 'filterMonth', 'filterPeriod', 'filterWeek', 'startDate', 'endDate'];
-    filterElements.forEach(id => {
-        const element = getElementById(id);
-        if (element) {
-            if (id === 'filterSegment' && currentUserData.segment !== 'executive') {
-                element.value = currentUserData.segment;
-                currentFilters.segment = currentUserData.segment;
-            } else {
-                element.value = '';
-            }
-        }
-    });
-    
-    hideElement('weekFilter');
-    hideElement('customDateRange');
-    
-    notificationManager.show('Filtros Limpos', 'Todos os filtros foram resetados', 'info');
-};
-
-// ===============================
-// ANÁLISE E DASHBOARD
+// DASHBOARD E ANÁLISE
 // ===============================
 
 window.handleAnalyze = async function() {
@@ -1718,8 +1187,58 @@ function createTimelineRow(entry) {
 }
 
 // ===============================
-// FORMULÁRIOS DE VENDAS E METAS
+// HANDLERS
 // ===============================
+
+window.handleSegmentChange = function() {
+    currentFilters.segment = getElementValue('filterSegment');
+    updateDependentFilters();
+    resetDependentFilters();
+};
+
+window.handleStoreChange = function() {
+    currentFilters.store = getElementValue('filterStore');
+};
+
+window.handleMonthChange = async function() {
+    currentFilters.month = getElementValue('filterMonth');
+    currentFilters.week = '';
+    
+    const filterWeek = getElementById('filterWeek');
+    if (filterWeek && currentFilters.segment && currentFilters.month) {
+        await updateWeeksFilter();
+    }
+};
+
+window.handlePeriodChange = function() {
+    const period = getElementValue('filterPeriod');
+    currentFilters.period = period;
+    
+    if (period === 'week') {
+        showElement('weekFilter');
+        hideElement('customDateRange');
+        if (currentFilters.segment && currentFilters.month) {
+            updateWeeksFilter();
+        }
+    } else if (period === 'range') {
+        hideElement('weekFilter');
+        showElement('customDateRange');
+    } else {
+        hideElement('weekFilter');
+        hideElement('customDateRange');
+    }
+    
+    clearFiltersState();
+};
+
+window.handleDateRangeChange = function() {
+    currentFilters.startDate = getElementValue('startDate');
+    currentFilters.endDate = getElementValue('endDate');
+};
+
+window.handleWeekChange = function() {
+    currentFilters.week = getElementValue('filterWeek');
+};
 
 window.handleEntryTypeChange = function() {
     const entryType = getElementValue('entryType');
@@ -1771,6 +1290,132 @@ window.previewTargetMonth = function() {
         showElement('monthPreview');
     }
 };
+
+// ===============================
+// FUNÇÕES AUXILIARES
+// ===============================
+
+function updateDependentFilters() {
+    const segment = currentFilters.segment;
+    const filterStore = getElementById('filterStore');
+    
+    if (filterStore) {
+        filterStore.innerHTML = '<option value="">Todas as lojas</option>';
+        
+        if (segment && businessData[segment]) {
+            const stores = businessData[segment].stores;
+            stores.forEach(store => {
+                const option = document.createElement('option');
+                option.value = store;
+                option.textContent = store;
+                filterStore.appendChild(option);
+            });
+        }
+    }
+}
+
+function resetDependentFilters() {
+    currentFilters.store = '';
+    currentFilters.week = '';
+    
+    setElementValue('filterStore', '');
+    setElementValue('filterWeek', '');
+    
+    hideElement('weekFilter');
+    hideElement('customDateRange');
+}
+
+async function updateWeeksFilter() {
+    const filterWeek = getElementById('filterWeek');
+    if (!filterWeek) return;
+    
+    filterWeek.innerHTML = '<option value="">Carregando semanas...</option>';
+    
+    try {
+        const weeks = await queryService.getAvailableWeeks(currentFilters.segment, currentFilters.month);
+        
+        filterWeek.innerHTML = '<option value="">Todas as semanas</option>';
+        
+        if (weeks.length > 0) {
+            weeks.forEach(week => {
+                const option = document.createElement('option');
+                option.value = week.identifier;
+                option.textContent = week.label;
+                filterWeek.appendChild(option);
+            });
+        } else {
+            const noDataOption = document.createElement('option');
+            noDataOption.value = '';
+            noDataOption.textContent = 'Nenhuma semana encontrada';
+            noDataOption.disabled = true;
+            filterWeek.appendChild(noDataOption);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar semanas:', error);
+        filterWeek.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
+function clearFiltersState() {
+    currentFilters.startDate = '';
+    currentFilters.endDate = '';
+    currentFilters.week = '';
+    setElementValue('startDate', '');
+    setElementValue('endDate', '');
+    setElementValue('filterWeek', '');
+}
+
+window.clearFilters = function() {
+    Object.keys(currentFilters).forEach(key => {
+        if (key !== 'segment' && currentUserData.segment !== 'executive') {
+            currentFilters[key] = '';
+        } else if (currentUserData.segment === 'executive') {
+            currentFilters[key] = '';
+        }
+    });
+    
+    const filterElements = ['filterSegment', 'filterStore', 'filterMonth', 'filterPeriod', 'filterWeek', 'startDate', 'endDate'];
+    filterElements.forEach(id => {
+        const element = getElementById(id);
+        if (element) {
+            if (id === 'filterSegment' && currentUserData.segment !== 'executive') {
+                element.value = currentUserData.segment;
+                currentFilters.segment = currentUserData.segment;
+            } else {
+                element.value = '';
+            }
+        }
+    });
+    
+    hideElement('weekFilter');
+    hideElement('customDateRange');
+    
+    notificationManager.show('Filtros Limpos', 'Todos os filtros foram resetados', 'info');
+};
+
+window.filterByStore = function(store) {
+    setElementValue('filterStore', store);
+    currentFilters.store = store;
+    handleAnalyze();
+};
+
+window.exportTableData = function() {
+    notificationManager.show('Exportar Dados', 'Funcionalidade em desenvolvimento', 'info');
+};
+
+window.refreshTableData = function() {
+    updateDashboard();
+};
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ===============================
+// VENDAS E METAS
+// ===============================
 
 window.handleSubmitSales = async function() {
     const salesData = collectSalesFormData();
@@ -1841,15 +1486,15 @@ window.handleSetTarget = async function() {
             month: selectedMonth,
             type: targetData.type,
             value: targetData.value,
-            date: serverTimestamp(),
+            date: window.firebase.serverTimestamp(),
             user: currentUser.email
         };
         
         if (targetData.targetDate) {
-            targetDocData.targetDate = Timestamp.fromDate(new Date(targetData.targetDate));
+            targetDocData.targetDate = window.firebase.Timestamp.fromDate(new Date(targetData.targetDate));
         }
         
-        await setDoc(doc(db, 'targets', targetId), targetDocData);
+        await window.firebase.setDoc(window.firebase.doc(db, 'targets', targetId), targetDocData);
         
         progressManager.update(80);
         
@@ -1952,12 +1597,12 @@ function prepareSalesEntryData(salesData) {
     };
     
     if (salesData.entryType === 'single') {
-        baseData.entryDate = Timestamp.fromDate(new Date(salesData.entryDate));
+        baseData.entryDate = window.firebase.Timestamp.fromDate(new Date(salesData.entryDate));
         baseData.month = salesData.entryDate.substring(0, 7);
     } else {
-        baseData.entryDate = Timestamp.fromDate(new Date(salesData.entryDate));
-        baseData.periodStart = Timestamp.fromDate(new Date(salesData.periodStart));
-        baseData.periodEnd = Timestamp.fromDate(new Date(salesData.periodEnd));
+        baseData.entryDate = window.firebase.Timestamp.fromDate(new Date(salesData.entryDate));
+        baseData.periodStart = window.firebase.Timestamp.fromDate(new Date(salesData.periodStart));
+        baseData.periodEnd = window.firebase.Timestamp.fromDate(new Date(salesData.periodEnd));
         baseData.month = salesData.entryDate.substring(0, 7);
         
         if (salesData.entryType === 'week') {
@@ -1969,16 +1614,16 @@ function prepareSalesEntryData(salesData) {
 }
 
 async function createNewSalesEntry(entryData) {
-    await addDoc(collection(db, 'sales_entries'), {
+    await window.firebase.addDoc(window.firebase.collection(db, 'sales_entries'), {
         ...entryData,
-        createdAt: serverTimestamp()
+        createdAt: window.firebase.serverTimestamp()
     });
 }
 
 async function updateExistingSalesEntry(entryData) {
-    await setDoc(doc(db, 'sales_entries', editingEntry.id), {
+    await window.firebase.setDoc(window.firebase.doc(db, 'sales_entries', editingEntry.id), {
         ...entryData,
-        lastModified: serverTimestamp()
+        lastModified: window.firebase.serverTimestamp()
     });
 }
 
@@ -2002,7 +1647,7 @@ function clearTargetForm() {
 
 window.editEntry = async function(entryId) {
     try {
-        const entryDoc = await getDoc(doc(db, 'sales_entries', entryId));
+        const entryDoc = await window.firebase.getDoc(window.firebase.doc(db, 'sales_entries', entryId));
         if (!entryDoc.exists()) {
             showAlert('entryAlert', 'Lançamento não encontrado', 'error');
             return;
@@ -2051,7 +1696,7 @@ window.deleteEntry = async function(entryId) {
         progressManager.show();
         progressManager.update(50);
         
-        await deleteDoc(doc(db, 'sales_entries', entryId));
+        await window.firebase.deleteDoc(window.firebase.doc(db, 'sales_entries', entryId));
         
         cacheManager.invalidatePattern(currentUserData.segment);
         
@@ -2083,36 +1728,12 @@ function cancelEdit() {
 }
 
 // ===============================
-// FUNÇÕES AUXILIARES
-// ===============================
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-window.filterByStore = function(store) {
-    setElementValue('filterStore', store);
-    currentFilters.store = store;
-    handleAnalyze();
-};
-
-window.exportTableData = function() {
-    notificationManager.show('Exportar Dados', 'Funcionalidade em desenvolvimento', 'info');
-};
-
-window.refreshTableData = function() {
-    updateDashboard();
-};
-
-// ===============================
-// GRÁFICOS
+// GRÁFICOS E MODAIS
 // ===============================
 
 function renderComparisonChart() {
     const canvas = getElementById('comparisonChart');
-    if (!canvas) return;
+    if (!canvas || !window.Chart) return;
     
     if (chartInstances.comparison) {
         chartInstances.comparison.destroy();
@@ -2163,10 +1784,6 @@ function renderComparisonChart() {
         }
     });
 }
-
-// ===============================
-// AÇÕES PRINCIPAIS
-// ===============================
 
 window.showChartsModal = function() {
     const modal = getElementById('chartsModal');
@@ -2247,58 +1864,63 @@ window.closeNotification = function() {
     notificationManager.hide();
 };
 
-// ===============================
-// PWA FUNCTIONS
-// ===============================
-
-window.installPWA = function() {
-    notificationManager.show('PWA Install', 'Funcionalidade em desenvolvimento', 'info');
+window.runSystemDiagnostic = function() {
+    console.log('🧪 Executando diagnóstico do sistema...');
+    
+    const diagnostics = [
+        { test: 'Firebase', status: isFirebaseInitialized ? 'OK' : 'ERROR' },
+        { test: 'Cache', status: cacheManager ? 'OK' : 'ERROR' },
+        { test: 'Autenticação', status: currentUser ? 'OK' : 'WAITING' },
+        { test: 'Interface', status: document.getElementById('dashboard') ? 'OK' : 'ERROR' }
+    ];
+    
+    diagnostics.forEach(({ test, status }) => {
+        const icon = status === 'OK' ? '✅' : status === 'ERROR' ? '❌' : '⏳';
+        console.log(`${icon} ${test}: ${status}`);
+    });
+    
+    notificationManager.show('Diagnóstico', 'Resultados no console', 'info');
 };
 
-window.dismissInstallPrompt = function() {
-    const prompt = getElementById('installPrompt');
-    if (prompt) {
-        prompt.classList.remove('show');
-    }
-};
-
 // ===============================
-// 🔥 CONTROLE DE AUTENTICAÇÃO PRINCIPAL
+// INICIALIZAÇÃO E CONTROLE DE AUTH
 // ===============================
 
-onAuthStateChanged(auth, async (user) => {
-    try {
-        if (user) {
-            if (!defaultUsers[user.email]) {
-                showAlert('loginAlert', 'Usuário não autorizado', 'error');
-                await window.handleLogout();
-                return;
+async function setupAuthStateListener() {
+    await initializeFirebase();
+    
+    window.firebase.onAuthStateChanged(auth, async (user) => {
+        try {
+            if (user) {
+                if (!defaultUsers[user.email]) {
+                    showAlert('loginAlert', 'Usuário não autorizado', 'error');
+                    await window.handleLogout();
+                    return;
+                }
+
+                currentUser = user;
+                currentUserData = defaultUsers[user.email];
+                
+                console.log('🔑 Usuário autenticado:', currentUserData.name);
+                
+                setTimeout(async () => {
+                    await showDashboard();
+                }, 100);
+            } else {
+                showLoginScreen();
             }
-
-            currentUser = user;
-            currentUserData = defaultUsers[user.email];
-            
-            // 🤖 INICIALIZAR AUTO SETUP
-            console.log('🤖 Iniciando Auto Setup do Firebase...');
-            await firebaseSetup.initializeSystem(user);
-            
-            setTimeout(async () => {
-                await showDashboard();
-            }, 100);
-        } else {
+        } catch (error) {
+            console.error('❌ Erro na verificação de autenticação:', error);
             showLoginScreen();
         }
-    } catch (error) {
-        console.error('❌ Erro na verificação de autenticação:', error);
-        showLoginScreen();
-    }
-});
+    });
+}
 
 // ===============================
-// INICIALIZAÇÃO E DEBUG
+// INICIALIZAÇÃO PRINCIPAL
 // ===============================
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('🚀 Ice Beer v4.0 - Sistema iniciado');
     console.log('✅ Características:');
     console.log('  - 🔥 Firebase Rules configuradas');
@@ -2308,44 +1930,54 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('  - 📱 PWA ready');
     console.log('  - 📊 Relatórios flexíveis (junho 2025 - dezembro 2028)');
     
-    // Configurar indicadores de status
-    setTimeout(() => {
-        const firebaseStatus = getElementById('firebaseStatus');
-        const cacheStatus = getElementById('cacheStatus');
-        const pwStatus = getElementById('pwStatus');
-        
-        if (firebaseStatus) {
-            firebaseStatus.textContent = '✅ Firebase Conectado';
-            firebaseStatus.classList.add('success');
-        }
-        
-        if (cacheStatus) {
-            cacheStatus.textContent = '💾 Cache Ativo';
-            cacheStatus.classList.add('success');
-        }
-        
-        if (pwStatus) {
-            pwStatus.textContent = '📱 PWA Configurado';
-            pwStatus.classList.add('success');
-        }
-        
+    try {
+        // Configurar indicadores de status
         setTimeout(() => {
-            [firebaseStatus, cacheStatus, pwStatus].forEach(indicator => {
-                if (indicator) {
-                    indicator.classList.remove('show');
-                }
-            });
-        }, 4000);
-    }, 2000);
-    
-    // Expor ferramentas de debug globalmente
-    window.fbTest = fbTest;
-    window.firebaseSetup = firebaseSetup;
-    console.log('🧪 Debug Tools disponíveis:');
-    console.log('  - fbTest.runFullDiagnostic() - Diagnóstico completo');
-    console.log('  - fbTest.createTestData() - Criar dados de teste');
-    console.log('  - fbTest.cleanupTestData() - Limpar dados de teste');
-    console.log('  - fbTest.checkCachePerformance() - Teste de performance');
+            const firebaseStatus = getElementById('firebaseStatus');
+            const cacheStatus = getElementById('cacheStatus');
+            const pwStatus = getElementById('pwStatus');
+            
+            if (firebaseStatus) {
+                firebaseStatus.textContent = '✅ Firebase Conectado';
+                firebaseStatus.classList.add('success');
+            }
+            
+            if (cacheStatus) {
+                cacheStatus.textContent = '💾 Cache Ativo';
+                cacheStatus.classList.add('success');
+            }
+            
+            if (pwStatus) {
+                pwStatus.textContent = '📱 PWA Configurado';
+                pwStatus.classList.add('success');
+            }
+            
+            setTimeout(() => {
+                [firebaseStatus, cacheStatus, pwStatus].forEach(indicator => {
+                    if (indicator) {
+                        indicator.classList.remove('show');
+                    }
+                });
+            }, 4000);
+        }, 2000);
+        
+        // Inicializar Firebase e Auth
+        await setupAuthStateListener();
+        
+        // Expor globalmente para debug
+        window.cacheManager = cacheManager;
+        window.notificationManager = notificationManager;
+        window.runSystemDiagnostic = runSystemDiagnostic;
+        
+        console.log('🧪 Debug Tools disponíveis:');
+        console.log('  - runSystemDiagnostic() - Diagnóstico do sistema');
+        console.log('  - cacheManager.getStats() - Stats do cache');
+        console.log('  - cacheManager.clear() - Limpar cache');
+        
+    } catch (error) {
+        console.error('❌ Erro na inicialização:', error);
+        showError('Erro ao inicializar sistema. Recarregue a página.');
+    }
 });
 
 // Expor variáveis globais necessárias

@@ -2,7 +2,7 @@
   "name": "Ice Beer - Sistema de Gestão v4.0",
   "short_name": "Ice Beer",
   "description": "Sistema completo de controle de vendas e metas para o Grupo Ice Beer",
-  "version": "4.0.0",
+  "version": "4.0.2",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
@@ -69,7 +69,7 @@
       "url": "/?action=sales",
       "icons": [
         {
-          "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIGZpbGw9IiM0OGJiNzgiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJDNi40OCwyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTBzMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6TTEzIDEyaC0ydi0yaC0ydjJIOXYtNGgtMnYySDV2Mmgydjg9PCJwYXRoIGZpbGw9IiM0OGJiNzgiLz4KPC9zdmc+",
+          "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIGZpbGw9IiM0OGJiNzgiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMkM2LjQ4IDIgMiA2LjQ4IDIgMTJzNC40OCAxMCAxMCAxMCAxMC00LjQ4IDEwLTEwUzE3LjUyIDIgMTIgMnpNMTMgMTJoLTJ2LTJoLTJ2Mmg5djJoMnY4PSIgZmlsbD0iIzQ4YmI3OCIvPjwvc3ZnPg==",
           "sizes": "96x96"
         }
       ]
@@ -81,7 +81,7 @@
       "url": "/?action=targets",
       "icons": [
         {
-          "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIGZpbGw9IiNlZDg5MzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJsLTUuNSA5aDR2N2wzIDEuNWgxdi02aDRMMTIgMnoiIGZpbGw9IiNlZDg5MzYiLz4KPC9zdmc+",
+          "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIGZpbGw9IiNlZDg5MzYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMmwtNS41IDloNHY3bDMgMS41aDF2LTZoNEwxMiAyeiIgZmlsbD0iI2VkODkzNiIvPjwvc3ZnPg==",
           "sizes": "96x96"
         }
       ]
@@ -93,7 +93,7 @@
       "url": "/?action=reports",
       "icons": [
         {
-          "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIGZpbGw9IiM2NjdlZWEiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTMgM3YxOGgxOFY5bC02LTZIM3ptMTIgMTBoLTJ2LTRoMnY0em0tNCA2aC0ydi02aDJ2NnptNCA4SDl2LTJIMTY1PSJwYXRoIGZpbGw9IiM2NjdlZWEiLz4KPC9zdmc+",
+          "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIGZpbGw9IiM2NjdlZWEiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMyAzdjE4aDE4VjlsLTYtNkgzem0xMiAxMGgtMnYtNGgydjR6bS00IDZoLTJ2LTZoMnY2em00IDhIOXYtMmgxNjUiIGZpbGw9IiM2NjdlZWEiLz48L3N2Zz4=",
           "sizes": "96x96"
         }
       ]
@@ -105,7 +105,7 @@
       "url": "/?action=dashboard",
       "icons": [
         {
-          "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIGZpbGw9IiM3NjRiYTIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTMgMTNhOSA5IDAgMCAxIDEzLjE3LTggQTUgNSAwIDAgMSAyMSA5YTMgMyAwIDAgMSAwIDZ2LTJhNSA1IDAgMCAwLTQtNCAzIDMgMCAwIDAtMyAzIDUgNSAwIDAgMCA0IDRoMmE5IDkgMCAwIDEtMTcgMHoiIGZpbGw9IiM3NjRiYTIiLz4KPC9zdmc+",
+          "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIGZpbGw9IiM3NjRiYTIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMyAxM2E5IDkgMCAwIDEgMTMuMTctOCBBNSA1IDAgMCAxIDIxIDlhMyAzIDAgMCAxIDAgNnYtMmE1IDUgMCAwIDAtNC00IDMgMyAwIDAgMC0zIDMgNSA1IDAgMCAwIDQgNGgyYTkgOSAwIDAgMS0xNyAweiIgZmlsbD0iIzc2NGJhMiIvPjwvc3ZnPg==",
           "sizes": "96x96"
         }
       ]

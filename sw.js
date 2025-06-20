@@ -1,12 +1,12 @@
 // ===============================
-// 🔧 SERVICE WORKER ICE BEER v4.0
-// Versão Corrigida e Otimizada
+// 🔧 SERVICE WORKER ICE BEER v4.0 - CORRIGIDO
+// Versão Otimizada e Funcional
 // ===============================
 
-const CACHE_NAME = 'ice-beer-v4.0.1';
-const STATIC_CACHE = 'ice-beer-static-v4.0.1';
-const DYNAMIC_CACHE = 'ice-beer-dynamic-v4.0.1';
-const API_CACHE = 'ice-beer-api-v4.0.1';
+const CACHE_NAME = 'ice-beer-v4.0.2';
+const STATIC_CACHE = 'ice-beer-static-v4.0.2';
+const DYNAMIC_CACHE = 'ice-beer-dynamic-v4.0.2';
+const API_CACHE = 'ice-beer-api-v4.0.2';
 
 // Assets essenciais para cache estático
 const STATIC_ASSETS = [
@@ -14,10 +14,7 @@ const STATIC_ASSETS = [
   '/index.html',
   '/styles.css',
   '/script.js',
-  '/manifest.json',
-  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+  '/manifest.json'
 ];
 
 // URLs para cache dinâmico
@@ -40,7 +37,7 @@ const CONFIG = {
   maxAge: 24 * 60 * 60 * 1000, // 24 horas
   maxEntries: 100,
   networkTimeoutSeconds: 10,
-  version: '4.0.1'
+  version: '4.0.2'
 };
 
 // ===============================
@@ -56,13 +53,20 @@ self.addEventListener('install', event => {
         console.log('📦 SW: Cacheando assets estáticos');
         return cache.addAll(STATIC_ASSETS.filter(url => {
           try {
-            new URL(url, self.location);
+            if (url.startsWith('/') || url.startsWith('./')) {
+              return true;
+            }
+            new URL(url);
             return true;
           } catch (e) {
             console.warn('❌ SW: URL inválida ignorada:', url);
             return false;
           }
-        }));
+        })).catch(error => {
+          console.warn('⚠️ SW: Erro ao cachear alguns assets:', error);
+          // Continue mesmo com alguns erros
+          return Promise.resolve();
+        });
       }),
       self.skipWaiting()
     ]).then(() => {
@@ -120,15 +124,26 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  const { request } = event;
-  const url = new URL(request.url);
-  
-  // Skip para same-origin requests com parâmetros de cache-busting
-  if (url.origin === self.location.origin && url.search.includes('_sw-precache')) {
+  // Ignorar requests do chrome-extension
+  if (event.request.url.startsWith('chrome-extension://')) {
     return;
   }
 
+  // Ignorar requests de dev tools
+  if (event.request.url.includes('__webpack') || event.request.url.includes('hot-update')) {
+    return;
+  }
+
+  const { request } = event;
+  
   try {
+    const url = new URL(request.url);
+    
+    // Skip para same-origin requests com parâmetros de cache-busting
+    if (url.origin === self.location.origin && url.search.includes('_sw-precache')) {
+      return;
+    }
+
     if (isStaticAsset(request)) {
       event.respondWith(handleStaticAsset(request));
     } else if (isApiRequest(request)) {
@@ -140,6 +155,10 @@ self.addEventListener('fetch', event => {
     }
   } catch (error) {
     console.error('❌ SW: Erro no fetch handler:', error);
+    // Fallback para network
+    event.respondWith(fetch(request).catch(() => {
+      return createErrorResponse('Recurso não disponível offline');
+    }));
   }
 });
 
@@ -159,7 +178,9 @@ async function handleStaticAsset(request) {
     
     if (networkResponse && networkResponse.ok) {
       const cache = await caches.open(STATIC_CACHE);
-      await cache.put(request, networkResponse.clone());
+      // Clone antes de cachear
+      const responseToCache = networkResponse.clone();
+      await cache.put(request, responseToCache);
     }
     
     return networkResponse;
@@ -177,7 +198,8 @@ async function handleApiRequest(request) {
     // Cache apenas GET requests bem-sucedidas
     if (request.method === 'GET' && networkResponse && networkResponse.ok) {
       const cache = await caches.open(API_CACHE);
-      await cache.put(request, networkResponse.clone());
+      const responseToCache = networkResponse.clone();
+      await cache.put(request, responseToCache);
     }
     
     return networkResponse;
@@ -202,7 +224,8 @@ async function handleDynamicAsset(request) {
   const fetchPromise = fetchWithTimeout(request).then(networkResponse => {
     if (networkResponse && networkResponse.ok) {
       caches.open(DYNAMIC_CACHE).then(cache => {
-        cache.put(request, networkResponse.clone());
+        const responseToCache = networkResponse.clone();
+        cache.put(request, responseToCache);
       });
     }
     return networkResponse;
@@ -227,6 +250,11 @@ async function handleNavigationRequest(request) {
       return cachedIndex;
     }
     
+    const cachedRoot = await caches.match('/');
+    if (cachedRoot) {
+      return cachedRoot;
+    }
+    
     return createErrorResponse('App não disponível offline');
   }
 }
@@ -244,15 +272,19 @@ function isStaticAsset(request) {
            url.pathname.endsWith('.js') ||
            url.pathname.endsWith('.png') ||
            url.pathname.endsWith('.jpg') ||
+           url.pathname.endsWith('.jpeg') ||
            url.pathname.endsWith('.svg') ||
            url.pathname.endsWith('.ico') ||
            url.pathname.endsWith('.json') ||
            url.pathname === '/' ||
-           url.pathname === '/index.html';
+           url.pathname === '/index.html' ||
+           url.pathname.endsWith('.woff') ||
+           url.pathname.endsWith('.woff2') ||
+           url.pathname.endsWith('.ttf');
   }
   
   // CDN assets
-  return STATIC_ASSETS.some(asset => request.url.includes(asset));
+  return false;
 }
 
 function isApiRequest(request) {
@@ -462,7 +494,7 @@ self.addEventListener('notificationclick', event => {
   
   if (event.action === 'explore') {
     event.waitUntil(
-      clients.matchAll().then(clientList => {
+      clients.matchAll({ type: 'window' }).then(clientList => {
         // Procurar por cliente já aberto
         for (const client of clientList) {
           if (client.url.includes('ice-beer') && 'focus' in client) {
@@ -484,10 +516,14 @@ self.addEventListener('notificationclick', event => {
 // ===============================
 
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  
-  if (url.pathname === '/share-target' && event.request.method === 'POST') {
-    event.respondWith(handleShareTarget(event.request));
+  try {
+    const url = new URL(event.request.url);
+    
+    if (url.pathname === '/share-target' && event.request.method === 'POST') {
+      event.respondWith(handleShareTarget(event.request));
+    }
+  } catch (error) {
+    // Ignorar erros de URL inválida
   }
 });
 
@@ -546,12 +582,16 @@ self.addEventListener('message', event => {
       break;
     case 'CACHE_STATS':
       getCacheStats().then(stats => {
-        event.ports[0].postMessage({ type: 'CACHE_STATS_RESPONSE', stats });
+        if (event.ports && event.ports[0]) {
+          event.ports[0].postMessage({ type: 'CACHE_STATS_RESPONSE', stats });
+        }
       });
       break;
     case 'CLEAR_CACHE':
       clearAllCaches().then(() => {
-        event.ports[0].postMessage({ type: 'CACHE_CLEARED' });
+        if (event.ports && event.ports[0]) {
+          event.ports[0].postMessage({ type: 'CACHE_CLEARED' });
+        }
       });
       break;
     default:
@@ -608,24 +648,26 @@ console.log('  ✅ Error Handling');
 console.log('  ✅ Cache Management');
 
 // Performance monitoring
-performance.mark('sw-load');
+if ('performance' in self && 'mark' in self.performance) {
+  performance.mark('sw-load');
 
-self.addEventListener('install', () => {
-  performance.mark('sw-install');
-});
+  self.addEventListener('install', () => {
+    performance.mark('sw-install');
+  });
 
-self.addEventListener('activate', () => {
-  performance.mark('sw-activate');
-  
-  // Medir performance de inicialização
-  try {
-    performance.measure('sw-install-time', 'sw-load', 'sw-install');
-    performance.measure('sw-activate-time', 'sw-install', 'sw-activate');
-  } catch (error) {
-    // Performance API pode não estar disponível
-    console.warn('⚠️ SW: Performance API não disponível');
-  }
-});
+  self.addEventListener('activate', () => {
+    performance.mark('sw-activate');
+    
+    // Medir performance de inicialização
+    try {
+      performance.measure('sw-install-time', 'sw-load', 'sw-install');
+      performance.measure('sw-activate-time', 'sw-install', 'sw-activate');
+    } catch (error) {
+      // Performance API pode não estar disponível
+      console.warn('⚠️ SW: Performance API não disponível');
+    }
+  });
+}
 
 // Cleanup automático a cada 6 horas
 setInterval(() => {
