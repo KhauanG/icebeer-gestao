@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="robots" content="noindex, nofollow">
-    <meta name="description" content="Sistema de controle de vendas Ice Beer">
+    <meta name="description" content="Sistema de controle de vendas Ice Beer v4.0 - Firebase integrado">
     <title>🍺 Ice Beer - Sistema de Vendas v4.0</title>
     
     <!-- PWA Meta Tags -->
@@ -14,17 +14,20 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Ice Beer">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iNDAiIGZpbGw9InVybCgjZ3JhZGllbnQwX2xpbmVhcl8xXzEpIi8+CjxkZWZzPgo8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWRpZW50MF9saW5lYXJfMV8xIiB4MT0iMCIgeTE9IjAiIHgyPSIxOTIiIHkyPSIxOTIiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KPHN0b3Agc3RvcC1jb2xvcj0iIzY2N2VlYSIvPgo8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM3NjRiYTIiLz4KPC9saW5lYXJHcmFkaWVudD4KPC9kZWZzPgo8cGF0aCBkPSJNNDggNzJDNDggNjMuMTYzNCA1NS4xNjM0IDU2IDY0IDU2SDEyOEMxMzYuODM3IDU2IDE0NCA2My4xNjM0IDE0NCA3MlYxMjBDMTQ0IDEyOC44MzcgMTM2LjgzNyAxMzYgMTI4IDEzNkg2NEM1NS4xNjM0IDEzNiA0OCAxMjguODM3IDQ4IDEyMFY3MloiIGZpbGw9IndoaXRlIi8+Cjx0ZXh0IHg9Ijk2IiB5PSIxMDQiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSI0OCIgZmlsbD0iIzY2N2VlYSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9IjAuM2VtIj7wn4+6PC90ZXh0Pgo8L3N2Zz4K">
     
     <!-- Favicon -->
-    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzIiIGhlaWdodD0iNzIiIHZpZXdCb3g9IjAgMCA3MiA3MiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjcyIiBoZWlnaHQ9IjcyIiByeD0iMTYiIGZpbGw9InVybCgjZ3JhZGllbnQwX2xpbmVhcl8xXzEpIi8+CjxwYXRoIGQ9Ik0yMCAyOEMyMCAyNC42ODYzIDIyLjY4NjMgMjIgMjYgMjJINDZDNDkuMzEzNyAyMiA1MiAyNC42ODYzIDUyIDI4VjQ0QzUyIDQ3LjMxMzcgNDkuMzEzNyA1MCA0NiA1MEgyNkMyMi42ODYzIDUwIDIwIDQ3LjMxMzcgMjAgNDRWMjhaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K">
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNzIiIGhlaWdodD0iNzIiIHZpZXdCb3g9IjAgMCA3MiA3MiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjcyIiBoZWlnaHQ9IjcyIiByeD0iMTYiIGZpbGw9InVybCgjZ3JhZGllbnQwX2xpbmVhcl8xXzEpIi8+CjxkZWZzPgo8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWRpZW50MF9saW5lYXJfMV8xIiB4MT0iMCIgeTE9IjAiIHgyPSI3MiIgeTI9IjcyIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CjxzdG9wIHN0b3AtY29sb3I9IiM2NjdlZWEiLz4KPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNzY0YmEyIi8+CjwvbGluZWFyR3JhZGllbnQ+CjwvZGVmcz4KPHBhdGggZD0iTTIwIDI4QzIwIDI0LjY4NjMgMjIuNjg2MyAyMiAyNiAyMkg0NkM0OS4zMTM3IDIyIDUyIDI0LjY4NjMgNTIgMjhWNDRDNTIgNDcuMzEzNyA0OS4zMTM3IDUwIDQ2IDUwSDI2QzIyLjY4NjMgNTAgMjAgNDcuMzEzNyAyMCA0NFYyOFoiIGZpbGw9IndoaXRlIi8+Cjx0ZXh0IHg9IjM2IiB5PSI0MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE2IiBmaWxsPSIjNjY3ZWVhIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iMC4zZW0iPvCfj7o8L3RleHQ+Cjwvc3ZnPgo=">
     
     <!-- Styles -->
     <link rel="stylesheet" href="styles.css">
     
-    <!-- External Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Preload Critical Resources -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js" as="script">
+    <link rel="prefetch" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js">
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com https://*.googleapis.com https://*.firebaseapp.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;">
 </head>
 <body>
     <!-- Progress Indicator -->
@@ -34,9 +37,9 @@
 
     <!-- Status Indicators -->
     <div class="status-indicators">
-        <div id="firebaseStatus" class="status-indicator">🔥 Conectando Firebase...</div>
-        <div id="cacheStatus" class="status-indicator">💾 Inicializando Cache...</div>
-        <div id="pwStatus" class="status-indicator">📱 Configurando PWA...</div>
+        <div id="firebaseStatus" class="status-indicator show">🔥 Conectando Firebase...</div>
+        <div id="cacheStatus" class="status-indicator show">💾 Inicializando Cache...</div>
+        <div id="pwStatus" class="status-indicator show">📱 Configurando PWA...</div>
     </div>
 
     <!-- Performance Indicator -->
@@ -61,18 +64,22 @@
                 
                 <div class="form-group">
                     <label for="email">E-mail:</label>
-                    <input type="email" id="email" placeholder="seu@email.com" required>
+                    <input type="email" id="email" placeholder="seu@email.com" required autocomplete="email">
                 </div>
                 
                 <div class="form-group">
                     <label for="password">Senha:</label>
-                    <input type="password" id="password" placeholder="Sua senha" required>
+                    <input type="password" id="password" placeholder="Sua senha" required autocomplete="current-password">
                 </div>
                 
                 <button id="loginBtn" onclick="handleLogin()">
                     <span id="loginText">Entrar</span>
                     <span id="loginLoading" class="loading hidden"></span>
                 </button>
+                
+                <div class="login-help">
+                    <small>Usuários autorizados: conveniencias@icebeer.com, petiscarias@icebeer.com, diskchopp@icebeer.com, executivo@icebeer.com</small>
+                </div>
             </div>
         </div>
 
@@ -85,10 +92,10 @@
                     <span id="currentDate"></span>
                 </div>
                 <div class="top-controls">
-                    <select id="monthYearSelect" onchange="handleUpdateDashboard()">
+                    <select id="monthYearSelect" onchange="handleUpdateDashboard()" aria-label="Selecionar mês/ano">
                         <option value="">Carregando...</option>
                     </select>
-                    <button class="logout-btn" onclick="handleLogout()">Sair</button>
+                    <button class="logout-btn" onclick="handleLogout()" aria-label="Fazer logout">Sair</button>
                 </div>
             </div>
 
@@ -101,25 +108,25 @@
                 <div class="filters-grid">
                     <div class="filter-group">
                         <label for="filterSegment">Segmento:</label>
-                        <select id="filterSegment" onchange="handleSegmentChange()">
+                        <select id="filterSegment" onchange="handleSegmentChange()" aria-label="Filtrar por segmento">
                             <option value="">Todos os segmentos</option>
                         </select>
                     </div>
                     <div class="filter-group">
                         <label for="filterStore">Loja:</label>
-                        <select id="filterStore" onchange="handleStoreChange()">
+                        <select id="filterStore" onchange="handleStoreChange()" aria-label="Filtrar por loja">
                             <option value="">Todas as lojas</option>
                         </select>
                     </div>
                     <div class="filter-group">
                         <label for="filterMonth">Mês/Ano:</label>
-                        <select id="filterMonth" onchange="handleMonthChange()">
+                        <select id="filterMonth" onchange="handleMonthChange()" aria-label="Filtrar por mês">
                             <option value="">Selecione um mês</option>
                         </select>
                     </div>
                     <div class="filter-group">
                         <label for="filterPeriod">Período:</label>
-                        <select id="filterPeriod" onchange="handlePeriodChange()">
+                        <select id="filterPeriod" onchange="handlePeriodChange()" aria-label="Filtrar por período">
                             <option value="">Todo o mês</option>
                             <option value="week">Por semana</option>
                             <option value="range">Período personalizado</option>
@@ -132,11 +139,11 @@
                     <div class="date-inputs">
                         <div class="form-group">
                             <label for="startDate">Data Início:</label>
-                            <input type="date" id="startDate" onchange="handleDateRangeChange()">
+                            <input type="date" id="startDate" onchange="handleDateRangeChange()" aria-label="Data de início">
                         </div>
                         <div class="form-group">
                             <label for="endDate">Data Fim:</label>
-                            <input type="date" id="endDate" onchange="handleDateRangeChange()">
+                            <input type="date" id="endDate" onchange="handleDateRangeChange()" aria-label="Data de fim">
                         </div>
                     </div>
                 </div>
@@ -145,7 +152,7 @@
                 <div id="weekFilter" class="week-filter hidden">
                     <div class="form-group">
                         <label for="filterWeek">Semana:</label>
-                        <select id="filterWeek" onchange="handleWeekChange()">
+                        <select id="filterWeek" onchange="handleWeekChange()" aria-label="Filtrar por semana">
                             <option value="">Todas as semanas</option>
                         </select>
                     </div>
@@ -202,6 +209,9 @@
                     <button class="action-btn secondary" onclick="backupData()">
                         💾 Backup
                     </button>
+                    <button class="action-btn" onclick="runSystemDiagnostic()">
+                        🧪 Diagnóstico
+                    </button>
                 </div>
             </div>
 
@@ -214,14 +224,14 @@
                     
                     <div class="form-group">
                         <label for="storeSelect">Loja:</label>
-                        <select id="storeSelect" required>
+                        <select id="storeSelect" required aria-label="Selecionar loja">
                             <option value="">Selecione uma loja</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
                         <label for="entryType">Tipo de Lançamento:</label>
-                        <select id="entryType" onchange="handleEntryTypeChange()" required>
+                        <select id="entryType" onchange="handleEntryTypeChange()" required aria-label="Tipo de lançamento">
                             <option value="single">Dia específico</option>
                             <option value="period">Período (múltiplos dias)</option>
                             <option value="week">Semana completa</option>
@@ -231,17 +241,17 @@
                     <!-- Campos de data flexíveis -->
                     <div id="singleDateField" class="form-group">
                         <label for="singleDate">Data:</label>
-                        <input type="date" id="singleDate" onchange="previewTargetMonth()">
+                        <input type="date" id="singleDate" onchange="previewTargetMonth()" aria-label="Data do lançamento">
                     </div>
 
                     <div id="periodFields" class="period-fields hidden">
                         <div class="form-group">
                             <label for="periodStart">Data Início:</label>
-                            <input type="date" id="periodStart" onchange="previewTargetMonth()">
+                            <input type="date" id="periodStart" onchange="previewTargetMonth()" aria-label="Data de início do período">
                         </div>
                         <div class="form-group">
                             <label for="periodEnd">Data Fim:</label>
-                            <input type="date" id="periodEnd" onchange="previewTargetMonth()">
+                            <input type="date" id="periodEnd" onchange="previewTargetMonth()" aria-label="Data de fim do período">
                         </div>
                     </div>
                     
@@ -251,12 +261,12 @@
                     
                     <div class="form-group">
                         <label for="entryValue">Faturamento (R$):</label>
-                        <input type="number" id="entryValue" placeholder="0,00" step="0.01" min="0" required>
+                        <input type="number" id="entryValue" placeholder="0,00" step="0.01" min="0" max="1000000" required aria-label="Valor do faturamento">
                     </div>
                     
                     <div class="form-group">
                         <label for="entryNotes">Observações (opcional):</label>
-                        <textarea id="entryNotes" placeholder="Adicione observações sobre este lançamento" rows="3"></textarea>
+                        <textarea id="entryNotes" placeholder="Adicione observações sobre este lançamento" rows="3" aria-label="Observações do lançamento"></textarea>
                     </div>
                     
                     <button id="entryBtn" onclick="handleSubmitSales()">
@@ -277,14 +287,14 @@
                     
                     <div class="form-group">
                         <label for="targetStoreSelect">Loja:</label>
-                        <select id="targetStoreSelect" required>
+                        <select id="targetStoreSelect" required aria-label="Selecionar loja para meta">
                             <option value="">Selecione uma loja</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label for="targetType">Tipo de Meta:</label>
-                        <select id="targetType" onchange="handleTargetTypeChange()" required>
+                        <select id="targetType" onchange="handleTargetTypeChange()" required aria-label="Tipo de meta">
                             <option value="monthly">Meta Mensal</option>
                             <option value="weekly">Meta Semanal</option>
                             <option value="daily">Meta Diária</option>
@@ -293,12 +303,12 @@
 
                     <div id="targetDateField" class="form-group hidden">
                         <label for="targetDate">Data/Período:</label>
-                        <input type="date" id="targetDate">
+                        <input type="date" id="targetDate" aria-label="Data da meta">
                     </div>
                     
                     <div class="form-group">
                         <label for="targetValue">Valor da Meta (R$):</label>
-                        <input type="number" id="targetValue" placeholder="0,00" step="0.01" min="0" required>
+                        <input type="number" id="targetValue" placeholder="0,00" step="0.01" min="0" max="10000000" required aria-label="Valor da meta">
                     </div>
                     
                     <button id="targetBtn" onclick="handleSetTarget()">
@@ -314,10 +324,10 @@
                 
                 <!-- Controles da Tabela -->
                 <div class="table-controls">
-                    <div class="view-options">
-                        <button class="view-btn active" onclick="switchView('stores')" id="storesViewBtn">Por Loja</button>
-                        <button class="view-btn" onclick="switchView('timeline')" id="timelineViewBtn">Timeline</button>
-                        <button class="view-btn" onclick="switchView('comparison')" id="comparisonViewBtn">Comparativo</button>
+                    <div class="view-options" role="tablist">
+                        <button class="view-btn active" onclick="switchView('stores')" id="storesViewBtn" role="tab" aria-selected="true">Por Loja</button>
+                        <button class="view-btn" onclick="switchView('timeline')" id="timelineViewBtn" role="tab" aria-selected="false">Timeline</button>
+                        <button class="view-btn" onclick="switchView('comparison')" id="comparisonViewBtn" role="tab" aria-selected="false">Comparativo</button>
                     </div>
                     <div class="table-actions">
                         <button class="btn-small" onclick="exportTableData()">📊 Exportar</button>
@@ -326,17 +336,17 @@
                 </div>
 
                 <!-- Tabela por Lojas -->
-                <div id="storesView" class="table-view">
-                    <table class="data-table">
+                <div id="storesView" class="table-view" role="tabpanel">
+                    <table class="data-table" role="table">
                         <thead>
                             <tr>
-                                <th>Loja</th>
-                                <th>Faturamento</th>
-                                <th>Meta</th>
-                                <th>% Atingido</th>
-                                <th>Média Diária</th>
-                                <th>Lançamentos</th>
-                                <th>Ações</th>
+                                <th scope="col">Loja</th>
+                                <th scope="col">Faturamento</th>
+                                <th scope="col">Meta</th>
+                                <th scope="col">% Atingido</th>
+                                <th scope="col">Média Diária</th>
+                                <th scope="col">Lançamentos</th>
+                                <th scope="col">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="storesTableBody">
@@ -348,17 +358,17 @@
                 </div>
 
                 <!-- Timeline de Lançamentos -->
-                <div id="timelineView" class="table-view hidden">
-                    <table class="data-table">
+                <div id="timelineView" class="table-view hidden" role="tabpanel">
+                    <table class="data-table" role="table">
                         <thead>
                             <tr>
-                                <th>Data</th>
-                                <th>Loja</th>
-                                <th>Período</th>
-                                <th>Valor</th>
-                                <th>Tipo</th>
-                                <th>Observações</th>
-                                <th>Ações</th>
+                                <th scope="col">Data</th>
+                                <th scope="col">Loja</th>
+                                <th scope="col">Período</th>
+                                <th scope="col">Valor</th>
+                                <th scope="col">Tipo</th>
+                                <th scope="col">Observações</th>
+                                <th scope="col">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="timelineTableBody">
@@ -370,10 +380,10 @@
                 </div>
 
                 <!-- Vista Comparativa -->
-                <div id="comparisonView" class="table-view hidden">
+                <div id="comparisonView" class="table-view hidden" role="tabpanel">
                     <div class="comparison-charts">
                         <div class="chart-container">
-                            <canvas id="comparisonChart"></canvas>
+                            <canvas id="comparisonChart" aria-label="Gráfico comparativo de vendas"></canvas>
                         </div>
                     </div>
                 </div>
@@ -382,32 +392,32 @@
     </div>
 
     <!-- Notificações -->
-    <div id="notification" class="notification">
-        <button class="notification-close" onclick="closeNotification()">&times;</button>
+    <div id="notification" class="notification" role="alert" aria-live="polite">
+        <button class="notification-close" onclick="closeNotification()" aria-label="Fechar notificação">&times;</button>
         <div class="notification-title" id="notificationTitle">Título</div>
         <div class="notification-message" id="notificationMessage">Mensagem</div>
     </div>
 
     <!-- Modal para Gráficos -->
-    <div id="chartsModal" class="modal-overlay">
+    <div id="chartsModal" class="modal-overlay" role="dialog" aria-labelledby="modal-title" aria-hidden="true">
         <div class="modal">
             <div class="modal-header">
-                <h3 class="modal-title">📊 Análise Detalhada</h3>
-                <button class="modal-close" onclick="closeChartsModal()">&times;</button>
+                <h3 class="modal-title" id="modal-title">📊 Análise Detalhada</h3>
+                <button class="modal-close" onclick="closeChartsModal()" aria-label="Fechar modal">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="charts-container">
                     <div class="chart-section">
                         <h4>Evolução Temporal</h4>
-                        <canvas id="timelineChart"></canvas>
+                        <canvas id="timelineChart" aria-label="Gráfico de evolução temporal"></canvas>
                     </div>
                     <div class="chart-section">
                         <h4>Performance por Loja</h4>
-                        <canvas id="performanceChart"></canvas>
+                        <canvas id="performanceChart" aria-label="Gráfico de performance por loja"></canvas>
                     </div>
                     <div class="chart-section">
                         <h4>Metas vs Realizado</h4>
-                        <canvas id="goalsChart"></canvas>
+                        <canvas id="goalsChart" aria-label="Gráfico de metas vs realizado"></canvas>
                     </div>
                 </div>
             </div>
@@ -424,7 +434,101 @@
         <button onclick="dismissInstallPrompt()">Agora não</button>
     </div>
 
-    <!-- Scripts -->
+    <!-- External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+
+    <!-- Main Script -->
     <script type="module" src="script.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('✅ SW registered: ', registration);
+                        
+                        // Update available
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // Show update notification
+                                    if (window.notificationManager) {
+                                        window.notificationManager.show(
+                                            'Nova versão disponível!', 
+                                            'Recarregue a página para usar a versão mais recente', 
+                                            'info', 
+                                            10000
+                                        );
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.log('❌ SW registration failed: ', error);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installPrompt').classList.add('show');
+        });
+
+        window.installPWA = async function() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`PWA install ${outcome}`);
+                deferredPrompt = null;
+                document.getElementById('installPrompt').classList.remove('show');
+            }
+        };
+
+        window.dismissInstallPrompt = function() {
+            document.getElementById('installPrompt').classList.remove('show');
+            deferredPrompt = null;
+        };
+
+        // Add system diagnostic function
+        window.runSystemDiagnostic = function() {
+            if (window.fbTest) {
+                window.fbTest.runFullDiagnostic();
+            } else {
+                console.log('⚠️ Sistema de diagnóstico não está disponível');
+            }
+        };
+
+        // Add error handling
+        window.addEventListener('error', (e) => {
+            console.error('Global error:', e.error);
+            if (window.notificationManager) {
+                window.notificationManager.show(
+                    'Erro do Sistema', 
+                    'Ocorreu um erro inesperado. Verifique o console para detalhes.', 
+                    'error'
+                );
+            }
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            console.error('Unhandled promise rejection:', e.reason);
+            if (window.notificationManager) {
+                window.notificationManager.show(
+                    'Erro de Conexão', 
+                    'Problema de conectividade detectado.', 
+                    'warning'
+                );
+            }
+        });
+    </script>
 </body>
 </html>

@@ -1,0 +1,213 @@
+// ===============================
+// 🔥 FIREBASE FIRESTORE RULES - CORRIGIDAS
+// Ice Beer v4.0 - Sintaxe Correta
+// ===============================
+// INSTRUÇÕES:
+// 1. Vá para Firebase Console → Firestore → Rules
+// 2. SUBSTITUA todo o conteúdo por este código
+// 3. Clique "Publicar"
+// ===============================
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================
+    // FUNÇÕES AUXILIARES
+    // ===============================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAuthorizedUser() {
+      return isAuthenticated() && 
+        request.auth.token.email in [
+          'conveniencias@icebeer.com',
+          'petiscarias@icebeer.com', 
+          'diskchopp@icebeer.com',
+          'executivo@icebeer.com'
+        ];
+    }
+    
+    function getUserSegment() {
+      return request.auth.token.email == 'conveniencias@icebeer.com' ? 'conveniencias' :
+             request.auth.token.email == 'petiscarias@icebeer.com' ? 'petiscarias' :
+             request.auth.token.email == 'diskchopp@icebeer.com' ? 'diskchopp' :
+             request.auth.token.email == 'executivo@icebeer.com' ? 'executive' : null;
+    }
+    
+    function isExecutive() {
+      return request.auth.token.email == 'executivo@icebeer.com';
+    }
+    
+    function hasSegmentAccess(segment) {
+      return isExecutive() || getUserSegment() == segment;
+    }
+    
+    function isValidStore(segment, store) {
+      return (segment == 'conveniencias' && store in ['Loja 1', 'Loja 2', 'Loja 3']) ||
+             (segment == 'petiscarias' && store in ['Loja 1', 'Loja 2']) ||
+             (segment == 'diskchopp' && store in ['Delivery']);
+    }
+    
+    function isValidDateRange(dateValue) {
+      let startLimit = timestamp.date(2025, 6, 1);
+      let endLimit = timestamp.date(2028, 12, 31);
+      return dateValue >= startLimit && dateValue <= endLimit;
+    }
+    
+    function isValidMonth(month) {
+      return month.matches('202[5-8]-(0[6-9]|1[0-2])') || 
+             month.matches('202[6-8]-(0[1-9]|1[0-2])');
+    }
+    
+    function validateSalesEntry(data) {
+      return data.keys().hasAll(['segment', 'store', 'value', 'entryDate', 'month', 'entryType', 'user']) &&
+             data.segment is string && data.segment in ['conveniencias', 'petiscarias', 'diskchopp'] &&
+             data.store is string && isValidStore(data.segment, data.store) &&
+             data.value is number && data.value > 0 && data.value <= 1000000 &&
+             data.entryDate is timestamp && isValidDateRange(data.entryDate) &&
+             data.month is string && isValidMonth(data.month) &&
+             data.entryType is string && data.entryType in ['single', 'period', 'week'] &&
+             data.user is string && data.user == request.auth.token.email &&
+             validateEntryTypeFields(data);
+    }
+    
+    function validateEntryTypeFields(data) {
+      return (data.entryType == 'single') ||
+             (data.entryType == 'period' && data.keys().hasAll(['periodStart', 'periodEnd']) &&
+              data.periodStart is timestamp && data.periodEnd is timestamp &&
+              data.periodEnd > data.periodStart) ||
+             (data.entryType == 'week' && data.keys().hasAll(['periodStart', 'periodEnd', 'weekIdentifier']) &&
+              data.weekIdentifier is string);
+    }
+    
+    function validateTarget(data) {
+      return data.keys().hasAll(['segment', 'store', 'month', 'type', 'value', 'user']) &&
+             data.segment is string && data.segment in ['conveniencias', 'petiscarias', 'diskchopp'] &&
+             data.store is string && isValidStore(data.segment, data.store) &&
+             data.month is string && isValidMonth(data.month) &&
+             data.type is string && data.type in ['monthly', 'weekly', 'daily'] &&
+             data.value is number && data.value > 0 && data.value <= 10000000 &&
+             data.user is string && data.user == request.auth.token.email;
+    }
+    
+    function validateSystemLog(data) {
+      return data.keys().hasAll(['timestamp', 'level', 'message', 'user']) &&
+             data.level in ['info', 'warning', 'error', 'debug'] &&
+             data.user == request.auth.token.email;
+    }
+    
+    // ===============================
+    // SALES_ENTRIES - Lançamentos de Vendas
+    // ===============================
+    
+    match /sales_entries/{entryId} {
+      allow read: if isAuthorizedUser() && hasSegmentAccess(resource.data.segment);
+      
+      allow create: if isAuthorizedUser() && 
+                       hasSegmentAccess(request.resource.data.segment) &&
+                       validateSalesEntry(request.resource.data);
+      
+      allow update: if isAuthorizedUser() &&
+                       hasSegmentAccess(resource.data.segment) &&
+                       request.resource.data.segment == resource.data.segment &&
+                       validateSalesEntry(request.resource.data);
+      
+      allow delete: if isAuthorizedUser() && hasSegmentAccess(resource.data.segment);
+    }
+    
+    // ===============================
+    // TARGETS - Metas
+    // ===============================
+    
+    match /targets/{targetId} {
+      allow read: if isAuthorizedUser() && hasSegmentAccess(resource.data.segment);
+      
+      allow write: if isAuthorizedUser() &&
+                      hasSegmentAccess(request.resource.data.segment) &&
+                      validateTarget(request.resource.data);
+    }
+    
+    // ===============================
+    // USER_PROFILES - Perfis de Usuário
+    // ===============================
+    
+    match /user_profiles/{userId} {
+      allow read, write: if isAuthorizedUser() && 
+                           (isExecutive() || request.auth.uid == userId);
+    }
+    
+    // ===============================
+    // SYSTEM_LOGS - Logs do Sistema
+    // ===============================
+    
+    match /system_logs/{logId} {
+      allow read: if isExecutive();
+      
+      allow create: if isAuthorizedUser() && validateSystemLog(request.resource.data);
+    }
+    
+    // ===============================
+    // SYSTEM_SETTINGS - Configurações
+    // ===============================
+    
+    match /system_settings/{settingId} {
+      allow read: if isAuthorizedUser();
+      
+      allow write: if isExecutive();
+    }
+    
+    // ===============================
+    // NOTIFICATIONS - Notificações
+    // ===============================
+    
+    match /notifications/{notificationId} {
+      allow read: if isAuthorizedUser() && 
+                     (isExecutive() || resource.data.targetUser == request.auth.token.email);
+      
+      allow create: if isAuthorizedUser();
+      
+      allow update: if isAuthorizedUser() && 
+                       (isExecutive() || resource.data.targetUser == request.auth.token.email);
+    }
+    
+    // ===============================
+    // OFFLINE_QUEUE - Fila Offline
+    // ===============================
+    
+    match /offline_queue/{queueId} {
+      allow read, write: if isAuthorizedUser() && resource.data.user == request.auth.token.email;
+    }
+    
+    // ===============================
+    // REPORTS - Relatórios
+    // ===============================
+    
+    match /reports/{reportId} {
+      allow read: if isAuthorizedUser() && 
+                     (isExecutive() || hasSegmentAccess(resource.data.segment));
+      
+      allow create: if isAuthorizedUser() && 
+                       hasSegmentAccess(request.resource.data.segment);
+    }
+    
+    // ===============================
+    // CACHE_INVALIDATION - Controle de Cache
+    // ===============================
+    
+    match /cache_invalidation/{cacheId} {
+      allow read, write: if isAuthorizedUser();
+    }
+    
+    // ===============================
+    // BACKUP_DATA - Dados de Backup
+    // ===============================
+    
+    match /backup_data/{backupId} {
+      allow read, write: if isExecutive();
+    }
+  }
+}

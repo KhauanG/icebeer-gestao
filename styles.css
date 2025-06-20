@@ -1,5 +1,6 @@
 /* ===============================
-   RESET E VARIÁVEIS CSS
+   🎨 ICE BEER v4.0 - ESTILOS CORRIGIDOS
+   Sistema completo com Firebase integrado
    =============================== */
 
 :root {
@@ -30,20 +31,39 @@
     --border-radius: 15px;
     --border-radius-small: 8px;
     --transition: all 0.3s ease;
+    
+    /* Novas variáveis para melhor acessibilidade */
+    --focus-color: #4299e1;
+    --focus-shadow: 0 0 0 3px rgba(66, 153, 225, 0.3);
+    --disabled-opacity: 0.6;
 }
 
-* {
+/* ===============================
+   RESET E BASE
+   =============================== */
+
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+}
+
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    line-height: 1.6;
     background: var(--primary-gradient);
     min-height: 100vh;
     color: var(--text-primary);
     overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* ===============================
@@ -54,6 +74,8 @@ body {
     max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
+    position: relative;
+    z-index: 1;
 }
 
 .card {
@@ -65,6 +87,7 @@ body {
     transition: var(--transition);
     position: relative;
     overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .card:hover {
@@ -99,34 +122,49 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    font-weight: 700;
 }
 
 .header p {
     color: var(--text-secondary);
     font-size: 1.1em;
+    margin-bottom: 15px;
 }
 
 .version-badge {
     display: inline-block;
     background: var(--success-gradient);
     color: white;
-    padding: 6px 15px;
+    padding: 8px 16px;
     border-radius: 20px;
     font-size: 0.9em;
     font-weight: 600;
     margin-top: 10px;
     position: relative;
+    box-shadow: var(--shadow-light);
 }
 
 .version-badge::after {
-    content: '⚡ Otimizado';
-    font-size: 0.7em;
-    margin-left: 5px;
+    content: '⚡ Firebase';
+    font-size: 0.8em;
+    margin-left: 8px;
+    opacity: 0.9;
 }
 
 .login-form {
     max-width: 400px;
     margin: 0 auto;
+}
+
+.login-help {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.login-help small {
+    color: var(--text-muted);
+    font-size: 0.85em;
+    line-height: 1.4;
 }
 
 /* ===============================
@@ -140,33 +178,50 @@ body {
 
 .form-group label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     font-weight: 600;
     color: var(--text-primary);
     font-size: 14px;
 }
 
-input, select, textarea, button {
+input,
+select,
+textarea,
+button {
     width: 100%;
-    padding: 12px;
+    padding: 12px 16px;
     border: 2px solid var(--border-color);
     border-radius: var(--border-radius-small);
     font-size: 16px;
-    transition: var(--transition);
     font-family: inherit;
+    transition: var(--transition);
+    background: var(--bg-white);
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    box-shadow: var(--focus-shadow);
     transform: scale(1.01);
+}
+
+input:invalid:not(:focus):not(:placeholder-shown),
+select:invalid:not(:focus),
+textarea:invalid:not(:focus):not(:placeholder-shown) {
+    border-color: var(--danger-color);
+    box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
 }
 
 textarea {
     resize: vertical;
     min-height: 80px;
 }
+
+/* ===============================
+   BOTÕES
+   =============================== */
 
 button {
     background: var(--primary-gradient);
@@ -181,6 +236,7 @@ button {
     align-items: center;
     justify-content: center;
     gap: 8px;
+    min-height: 48px; /* Melhor acessibilidade */
 }
 
 button::before {
@@ -194,7 +250,7 @@ button::before {
     transition: left 0.5s;
 }
 
-button:hover {
+button:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
 }
@@ -203,8 +259,17 @@ button:hover::before {
     left: 100%;
 }
 
+button:focus {
+    outline: none;
+    box-shadow: var(--focus-shadow);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
 button:disabled {
-    opacity: 0.6;
+    opacity: var(--disabled-opacity);
     cursor: not-allowed;
     transform: none;
 }
@@ -213,7 +278,7 @@ button.secondary {
     background: var(--success-gradient);
 }
 
-button.secondary:hover {
+button.secondary:hover:not(:disabled) {
     box-shadow: 0 10px 25px rgba(72, 187, 120, 0.3);
 }
 
@@ -221,7 +286,7 @@ button.danger {
     background: var(--danger-gradient);
 }
 
-button.danger:hover {
+button.danger:hover:not(:disabled) {
     box-shadow: 0 10px 25px rgba(229, 62, 62, 0.3);
 }
 
@@ -231,6 +296,7 @@ button.danger:hover {
 
 .dashboard {
     display: none;
+    animation: fadeIn 0.5s ease-in-out;
 }
 
 .top-bar {
@@ -249,6 +315,7 @@ button.danger:hover {
 .user-info h2 {
     color: var(--text-primary);
     margin-bottom: 5px;
+    font-size: 1.4em;
 }
 
 .user-info span {
@@ -278,7 +345,7 @@ button.danger:hover {
 }
 
 /* ===============================
-   SISTEMA DE STATUS
+   STATUS INDICATORS
    =============================== */
 
 .status-indicators {
@@ -288,20 +355,22 @@ button.danger:hover {
     z-index: 1002;
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 8px;
 }
 
 .status-indicator {
-    background: rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.9);
     color: white;
-    padding: 8px 15px;
-    border-radius: 20px;
+    padding: 10px 16px;
+    border-radius: 25px;
     font-size: 12px;
+    font-weight: 500;
     transition: var(--transition);
     opacity: 0;
     transform: translateX(-100px);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: var(--shadow-light);
 }
 
 .status-indicator.show {
@@ -310,30 +379,35 @@ button.danger:hover {
 }
 
 .status-indicator.success {
-    background: rgba(72, 187, 120, 0.9);
+    background: rgba(72, 187, 120, 0.95);
+    border-color: rgba(72, 187, 120, 0.3);
 }
 
 .status-indicator.error {
-    background: rgba(229, 62, 62, 0.9);
+    background: rgba(229, 62, 62, 0.95);
+    border-color: rgba(229, 62, 62, 0.3);
 }
 
 .status-indicator.warning {
-    background: rgba(237, 137, 54, 0.9);
+    background: rgba(237, 137, 54, 0.95);
+    border-color: rgba(237, 137, 54, 0.3);
 }
 
 .performance-indicator {
     position: fixed;
     bottom: 80px;
     right: 20px;
-    background: rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.9);
     color: white;
-    padding: 8px 15px;
+    padding: 10px 16px;
     border-radius: 20px;
     font-size: 11px;
+    font-weight: 500;
     z-index: 999;
     opacity: 0;
     transition: var(--transition);
     backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
 }
 
 .performance-indicator.show {
@@ -344,21 +418,24 @@ button.danger:hover {
     position: fixed;
     bottom: 20px;
     right: 20px;
-    background: rgba(0,0,0,0.9);
+    background: rgba(0,0,0,0.95);
     color: white;
     padding: 12px 20px;
     border-radius: 25px;
     font-size: 12px;
+    font-weight: 500;
     z-index: 1000;
     transition: var(--transition);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(255,255,255,0.1);
     cursor: pointer;
+    box-shadow: var(--shadow-light);
 }
 
 .cache-status:hover {
     background: rgba(0,0,0,1);
     transform: scale(1.05);
+    box-shadow: var(--shadow-medium);
 }
 
 /* ===============================
@@ -372,6 +449,7 @@ button.danger:hover {
     padding: 30px;
     margin-bottom: 20px;
     position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .filters-title {
@@ -454,13 +532,13 @@ button.danger:hover {
     min-width: 150px;
 }
 
-.analyze-btn:hover {
+.analyze-btn:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(72, 187, 120, 0.3);
 }
 
 .analyze-btn:disabled {
-    opacity: 0.6;
+    opacity: var(--disabled-opacity);
     transform: none;
     cursor: not-allowed;
 }
@@ -485,6 +563,7 @@ button.danger:hover {
     transition: var(--transition);
     position: relative;
     overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .stat-card::before {
@@ -502,10 +581,10 @@ button.danger:hover {
     position: absolute;
     top: 0;
     right: 0;
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-    border-radius: 0 15px 0 50px;
+    border-radius: 0 15px 0 60px;
 }
 
 .stat-card:hover {
@@ -515,10 +594,12 @@ button.danger:hover {
 
 .stat-value {
     font-size: 2.2em;
-    font-weight: bold;
+    font-weight: 700;
     color: var(--primary-color);
     margin-bottom: 8px;
     transition: var(--transition);
+    position: relative;
+    z-index: 1;
 }
 
 .stat-card:hover .stat-value {
@@ -532,15 +613,19 @@ button.danger:hover {
     letter-spacing: 1px;
     font-weight: 600;
     margin-bottom: 5px;
+    position: relative;
+    z-index: 1;
 }
 
 .stat-subtitle {
     color: var(--text-muted);
     font-size: 0.8em;
+    position: relative;
+    z-index: 1;
 }
 
 /* ===============================
-   SEÇÃO DE FORMULÁRIOS
+   FORMULÁRIOS
    =============================== */
 
 .forms-section {
@@ -577,20 +662,22 @@ button.danger:hover {
 }
 
 .month-preview {
-    background: #e6ffe6;
+    background: linear-gradient(135deg, #e6ffe6, #f0fff0);
     padding: 15px;
     border-radius: var(--border-radius-small);
     margin-bottom: 15px;
     font-size: 14px;
     border-left: 4px solid var(--success-color);
+    box-shadow: var(--shadow-light);
 }
 
 .edit-mode {
     margin-top: 20px;
     padding: 15px;
-    background: var(--bg-light);
+    background: linear-gradient(135deg, #fff3cd, #fef9e7);
     border-radius: var(--border-radius-small);
     border-left: 4px solid var(--warning-color);
+    box-shadow: var(--shadow-light);
 }
 
 .edit-mode p {
@@ -607,7 +694,7 @@ button.danger:hover {
 }
 
 /* ===============================
-   BOTÕES DE AÇÃO
+   AÇÕES
    =============================== */
 
 .action-buttons {
@@ -632,9 +719,10 @@ button.danger:hover {
     min-width: 180px;
     justify-content: center;
     font-size: 14px;
+    text-decoration: none;
 }
 
-.action-btn:hover {
+.action-btn:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
 }
@@ -643,7 +731,7 @@ button.danger:hover {
     background: var(--success-gradient);
 }
 
-.action-btn.secondary:hover {
+.action-btn.secondary:hover:not(:disabled) {
     box-shadow: 0 8px 20px rgba(72, 187, 120, 0.3);
 }
 
@@ -666,10 +754,11 @@ button.danger:hover {
     background: var(--bg-light);
     padding: 5px;
     border-radius: 25px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .view-btn {
-    padding: 8px 16px;
+    padding: 10px 18px;
     border: none;
     background: transparent;
     color: var(--text-secondary);
@@ -677,12 +766,15 @@ button.danger:hover {
     cursor: pointer;
     transition: var(--transition);
     font-size: 14px;
+    font-weight: 500;
     width: auto;
 }
 
-.view-btn.active, .view-btn:hover {
+.view-btn.active,
+.view-btn:hover {
     background: var(--primary-color);
     color: white;
+    box-shadow: var(--shadow-light);
 }
 
 .table-actions {
@@ -695,7 +787,8 @@ button.danger:hover {
     font-size: 12px;
     width: auto;
     margin: 0;
-    border-radius: 5px;
+    border-radius: 6px;
+    font-weight: 500;
 }
 
 .btn-edit {
@@ -714,6 +807,7 @@ button.danger:hover {
     border-radius: var(--border-radius-small);
     overflow: hidden;
     box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-color);
 }
 
 .data-table th,
@@ -731,26 +825,31 @@ button.danger:hover {
     font-size: 14px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
-.data-table tr:hover {
+.data-table tbody tr:hover {
     background: var(--bg-light);
 }
 
-.data-table tr:last-child td {
+.data-table tbody tr:last-child td {
     border-bottom: none;
 }
 
 .loading-row {
     text-align: center;
-    padding: 30px;
+    padding: 40px;
     color: var(--text-muted);
     font-style: italic;
+    background: var(--bg-light);
 }
 
 .currency {
     color: var(--success-color);
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
 }
 
 .progress-bar {
@@ -760,6 +859,7 @@ button.danger:hover {
     border-radius: 4px;
     overflow: hidden;
     margin: 8px 0;
+    position: relative;
 }
 
 .progress-fill {
@@ -806,6 +906,7 @@ button.danger:hover {
     margin-bottom: 15px;
     font-size: 1.1em;
     text-align: center;
+    font-weight: 600;
 }
 
 /* ===============================
@@ -819,22 +920,23 @@ button.danger:hover {
     font-weight: 500;
     transition: var(--transition);
     border-left: 4px solid;
+    box-shadow: var(--shadow-light);
 }
 
 .alert-success {
-    background: #c6f6d5;
+    background: linear-gradient(135deg, #c6f6d5, #e6fffa);
     color: #22543d;
     border-left-color: var(--success-color);
 }
 
 .alert-error {
-    background: #fed7d7;
+    background: linear-gradient(135deg, #fed7d7, #fff5f5);
     color: #742a2a;
     border-left-color: var(--danger-color);
 }
 
 .alert-warning {
-    background: #feebc8;
+    background: linear-gradient(135deg, #feebc8, #fffaf0);
     color: #744210;
     border-left-color: var(--warning-color);
 }
@@ -846,13 +948,14 @@ button.danger:hover {
     background: var(--bg-white);
     border-left: 4px solid var(--success-color);
     border-radius: var(--border-radius-small);
-    box-shadow: var(--shadow-medium);
+    box-shadow: var(--shadow-heavy);
     padding: 20px 25px;
     max-width: 400px;
     z-index: 1001;
     transform: translateX(450px);
     transition: var(--transition);
     backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .notification.show {
@@ -892,6 +995,7 @@ button.danger:hover {
     transition: var(--transition);
     width: auto;
     padding: 0;
+    min-height: auto;
 }
 
 .notification-close:hover {
@@ -929,13 +1033,14 @@ button.danger:hover {
     background: var(--bg-white);
     border-radius: var(--border-radius);
     padding: 30px;
-    max-width: 900px;
-    width: 90%;
+    max-width: 90vw;
     max-height: 85vh;
+    width: 900px;
     overflow-y: auto;
     transform: scale(0.9);
     transition: var(--transition);
     box-shadow: var(--shadow-heavy);
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .modal-overlay.show .modal {
@@ -966,6 +1071,7 @@ button.danger:hover {
     padding: 0;
     width: auto;
     transition: var(--transition);
+    min-height: auto;
 }
 
 .modal-close:hover {
@@ -992,6 +1098,7 @@ button.danger:hover {
     z-index: 1000;
     animation: slideInUp 0.5s ease;
     max-width: 400px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .install-prompt.show {
@@ -1008,6 +1115,7 @@ button.danger:hover {
     width: auto;
     transition: var(--transition);
     font-size: 14px;
+    min-height: auto;
 }
 
 .install-prompt button:hover {
@@ -1025,7 +1133,7 @@ button.danger:hover {
     left: 0;
     width: 100%;
     height: 3px;
-    background: var(--border-color);
+    background: rgba(255, 255, 255, 0.3);
     z-index: 1003;
     opacity: 0;
     transition: var(--transition);
@@ -1037,9 +1145,21 @@ button.danger:hover {
 
 .progress-indicator-bar {
     height: 100%;
-    background: var(--primary-gradient);
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
     width: 0%;
     transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-indicator-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: shimmer 1.5s infinite;
 }
 
 /* ===============================
@@ -1049,9 +1169,10 @@ button.danger:hover {
 .tooltip {
     position: relative;
     cursor: help;
+    display: inline-block;
 }
 
-.tooltip::after {
+.tooltip::before {
     content: attr(data-tooltip);
     position: absolute;
     bottom: 125%;
@@ -1067,8 +1188,24 @@ button.danger:hover {
     visibility: hidden;
     transition: var(--transition);
     z-index: 1004;
+    box-shadow: var(--shadow-light);
 }
 
+.tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: 115%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(0, 0, 0, 0.9);
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--transition);
+    z-index: 1004;
+}
+
+.tooltip:hover::before,
 .tooltip:hover::after {
     opacity: 1;
     visibility: visible;
@@ -1126,8 +1263,14 @@ button.danger:hover {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { 
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @keyframes slideIn {
@@ -1139,6 +1282,50 @@ button.danger:hover {
         transform: translateX(0);
         opacity: 1;
     }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ===============================
+   ACESSIBILIDADE
+   =============================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    /* Dark mode será implementado em versão futura */
+}
+
+/* Skip to content link para screen readers */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: var(--primary-color);
+    color: white;
+    padding: 8px;
+    text-decoration: none;
+    border-radius: 4px;
+    z-index: 9999;
+}
+
+.skip-link:focus {
+    top: 6px;
 }
 
 /* ===============================
@@ -1158,12 +1345,22 @@ button.danger:hover {
     .charts-container {
         grid-template-columns: 1fr;
     }
+    
+    .modal {
+        width: 95%;
+        padding: 20px;
+    }
 }
 
 @media (max-width: 768px) {
+    html {
+        font-size: 14px;
+    }
+    
     .top-bar {
         flex-direction: column;
         text-align: center;
+        gap: 15px;
     }
     
     .top-controls {
@@ -1173,6 +1370,7 @@ button.danger:hover {
     
     #monthYearSelect {
         width: 100%;
+        max-width: 300px;
     }
     
     .forms-section {
@@ -1189,10 +1387,13 @@ button.danger:hover {
     
     .action-buttons {
         justify-content: center;
+        flex-direction: column;
+        align-items: stretch;
     }
     
     .action-btn {
-        min-width: 150px;
+        min-width: auto;
+        width: 100%;
         padding: 12px 20px;
         font-size: 13px;
     }
@@ -1208,6 +1409,7 @@ button.danger:hover {
     .table-controls {
         flex-direction: column;
         align-items: stretch;
+        gap: 10px;
     }
     
     .view-options {
@@ -1223,24 +1425,26 @@ button.danger:hover {
         padding: 10px 8px;
     }
     
-    .modal {
-        max-width: 95%;
-        padding: 20px;
-    }
-    
     .status-indicators {
         position: relative;
         top: auto;
         left: auto;
-        margin-bottom: 10px;
+        margin-bottom: 15px;
         flex-direction: row;
         flex-wrap: wrap;
         justify-content: center;
+        gap: 5px;
+    }
+    
+    .status-indicator {
+        font-size: 11px;
+        padding: 6px 12px;
     }
     
     .notification {
         max-width: 90%;
         right: 5%;
+        left: 5%;
     }
     
     .install-prompt {
@@ -1249,18 +1453,25 @@ button.danger:hover {
         left: 10px;
         right: 10px;
         max-width: none;
+        gap: 15px;
     }
     
     .chart-container {
         height: 300px;
     }
+    
+    .cache-status {
+        font-size: 11px;
+        padding: 8px 12px;
+    }
+    
+    .performance-indicator {
+        font-size: 10px;
+        padding: 6px 10px;
+    }
 }
 
 @media (max-width: 480px) {
-    body {
-        font-size: 14px;
-    }
-    
     .container {
         padding: 10px;
     }
@@ -1279,7 +1490,7 @@ button.danger:hover {
     }
     
     input, select, textarea, button {
-        padding: 10px;
+        padding: 10px 12px;
         font-size: 16px; /* Prevent zoom on iOS */
     }
     
@@ -1288,8 +1499,8 @@ button.danger:hover {
     }
     
     .action-btn {
-        min-width: 120px;
         padding: 10px 15px;
+        font-size: 13px;
     }
     
     .filters-title {
@@ -1302,5 +1513,54 @@ button.danger:hover {
     
     .chart-container {
         height: 250px;
+    }
+    
+    .data-table {
+        font-size: 12px;
+    }
+    
+    .btn-small {
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+}
+
+/* ===============================
+   PRINT STYLES
+   =============================== */
+
+@media print {
+    body {
+        background: white;
+        color: black;
+    }
+    
+    .status-indicators,
+    .cache-status,
+    .performance-indicator,
+    .notification,
+    .install-prompt,
+    .top-controls,
+    .filter-actions,
+    .action-buttons,
+    .table-actions {
+        display: none !important;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid #ccc;
+    }
+    
+    .stats-grid {
+        break-inside: avoid;
+    }
+    
+    .data-table {
+        font-size: 12px;
+    }
+    
+    .chart-container {
+        height: 300px;
     }
 }
