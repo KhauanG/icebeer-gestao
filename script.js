@@ -1,6 +1,6 @@
 // ===============================
 // 🔥 ICE BEER v4.0 - SISTEMA COMPLETO CORRIGIDO
-// Firebase Integrado + Auto-Setup + Debug Tools
+// Firebase Integrado + Cache Otimizado + Bug Fixes
 // ===============================
 
 // ===============================
@@ -53,7 +53,8 @@ async function initializeFirebase() {
             orderBy, 
             limit,
             serverTimestamp,
-            Timestamp
+            Timestamp,
+            updateDoc
         } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
 
         // Inicializar Firebase
@@ -79,7 +80,8 @@ async function initializeFirebase() {
             orderBy,
             limit,
             serverTimestamp,
-            Timestamp
+            Timestamp,
+            updateDoc
         };
 
         isFirebaseInitialized = true;
@@ -134,7 +136,7 @@ let currentFilters = {
     period: '',
     startDate: '',
     endDate: '',
-    week: ''
+    weekIdentifier: ''
 };
 
 let chartInstances = {};
@@ -252,10 +254,27 @@ class CacheManager {
         return total > 0 ? Math.round((this.stats.hits / total) * 100) : 100;
     }
 
+    // Método melhorado para invalidação de cache
     invalidatePattern(pattern) {
         const keys = Array.from(this.cache.keys()).filter(key => key.includes(pattern));
         keys.forEach(key => this.cache.delete(key));
         console.log(`Cache invalidated: ${keys.length} entries matching "${pattern}"`);
+    }
+
+    // Novo método para invalidar cache relacionado a um segmento específico
+    invalidateSegmentCache(segment) {
+        // Invalida todas as entradas relacionadas ao segmento
+        this.invalidatePattern(`"segment":"${segment}"`);
+        this.invalidatePattern(`weeks_${segment}`);
+        this.invalidatePattern(`target_${segment}`);
+        console.log(`Cache do segmento ${segment} invalidado`);
+    }
+
+    // Novo método para invalidar cache de um mês específico
+    invalidateMonthCache(month) {
+        this.invalidatePattern(`"month":"${month}"`);
+        this.invalidatePattern(`_${month}_`);
+        console.log(`Cache do mês ${month} invalidado`);
     }
 
     clear() {
@@ -357,65 +376,84 @@ class ProgressManager {
 }
 
 class QueryService {
-    constructor(cacheManager) {
-        this.cache = cacheManager;
+  constructor(cacheManager) {
+    this.cache = cacheManager;
+  }
+
+  async getSalesEntries(filters = {}) {
+    /* 1️⃣  ── Pula o cache se veio a flag _noCache ─ */
+    const useCache = !filters._noCache;
+
+    const cacheKey = this.createCacheKey('sales', filters);
+
+    /* 2️⃣  ── Tenta ler do cache ──────────────────── */
+    if (useCache) {
+      const cached = await this.cache.get(cacheKey);
+      if (cached) {
+        console.log('📊 Dados obtidos do cache:', cacheKey);
+        return cached;
+      }
     }
 
-    async getSalesEntries(filters = {}) {
-        const cacheKey = `sales_${JSON.stringify(filters)}`;
-        
-        const cached = await this.cache.get(cacheKey);
-        if (cached) {
-            console.log('📊 Dados obtidos do cache:', cacheKey);
-            return cached;
-        }
+    /* 3️⃣  ── Consulta no Firestore ───────────────── */
+    try {
+      const { collection, query, where, orderBy, limit, getDocs } = window.firebase;
+      const baseQuery   = collection(db, 'sales_entries');
+      const constraints = [];
 
-        try {
-            const { collection, query, where, orderBy, limit, getDocs } = window.firebase;
-            let baseQuery = collection(db, 'sales_entries');
-            const constraints = [];
+      // SEGMENTO
+      if (currentUserData.segment !== 'executive') {
+        constraints.push(where('segment', '==', currentUserData.segment));
+      } else if (filters.segment) {
+        constraints.push(where('segment', '==', filters.segment));
+      }
 
-            if (filters.segment) {
-                constraints.push(where('segment', '==', filters.segment));
-            }
-            if (filters.store) {
-                constraints.push(where('store', '==', filters.store));
-            }
-            if (filters.month) {
-                constraints.push(where('month', '==', filters.month));
-            }
+      // LOJA
+      if (filters.store) {
+        constraints.push(where('store', '==', filters.store));
+      }
 
-            if (filters.startDate && filters.endDate) {
-                const startTimestamp = window.firebase.Timestamp.fromDate(new Date(filters.startDate));
-                const endTimestamp = window.firebase.Timestamp.fromDate(new Date(filters.endDate + 'T23:59:59'));
-                constraints.push(where('entryDate', '>=', startTimestamp));
-                constraints.push(where('entryDate', '<=', endTimestamp));
-            }
+      // MÊS
+      if (filters.month) {
+        constraints.push(where('month', '==', filters.month));
+      }
 
-            if (filters.weekIdentifier) {
-                constraints.push(where('weekIdentifier', '==', filters.weekIdentifier));
-            }
+      // INTERVALO DE DATAS
+      if (filters.startDate && filters.endDate) {
+        const startTS = window.firebase.Timestamp.fromDate(new Date(filters.startDate));
+        const endTS   = window.firebase.Timestamp.fromDate(new Date(filters.endDate + 'T23:59:59'));
+        constraints.push(where('entryDate', '>=', startTS));
+        constraints.push(where('entryDate', '<=', endTS));
+      }
 
-            constraints.push(orderBy('entryDate', 'desc'));
-            constraints.push(limit(200));
+      // SEMANA
+      if (filters.weekIdentifier) {
+        constraints.push(where('weekIdentifier', '==', filters.weekIdentifier));
+      }
 
-            const salesQuery = query(baseQuery, ...constraints);
-            const snapshot = await getDocs(salesQuery);
-            
-            const entries = [];
-            snapshot.forEach((docRef) => {
-                const data = { id: docRef.id, ...docRef.data() };
-                entries.push(data);
-            });
+      constraints.push(orderBy('entryDate', 'desc'));
+      constraints.push(limit(200));
 
-            await this.cache.set(cacheKey, entries);
-            console.log(`🔍 Buscados ${entries.length} registros do Firestore`);
-            return entries;
-        } catch (error) {
-            console.error('❌ Erro ao buscar vendas:', error);
-            return [];
-        }
+      const salesQuery = query(baseQuery, ...constraints);
+      const snapshot   = await getDocs(salesQuery);
+
+      const entries = [];
+      snapshot.forEach(docRef => entries.push({ id: docRef.id, ...docRef.data() }));
+
+      /* 4️⃣  ── Grava no cache, se permitido ──────── */
+      if (useCache) {
+        await this.cache.set(cacheKey, entries);
+      }
+
+      console.log(`🔍 Buscados ${entries.length} registros do Firestore`);
+      return entries;
+      
+    } catch (error) {
+      console.error('❌ Erro ao buscar vendas:', error);
+      return [];
     }
+  }
+
 
     async getTarget(segment, store, month, type = 'monthly') {
         const cacheKey = `target_${segment}_${store}_${month}_${type}`;
@@ -443,12 +481,19 @@ class QueryService {
         const cacheKey = `weeks_${segment}_${month}`;
         
         const cached = await this.cache.get(cacheKey);
-        if (cached) {
+        if (cached && cached.length > 0) {
             return cached;
         }
 
         try {
-            const entries = await this.getSalesEntries({ segment, month });
+            // Buscar apenas entradas do tipo 'week' para o segmento e mês
+            const entries = await this.getSalesEntries({ 
+                segment, 
+                month,
+                // Não usar cache para esta consulta interna
+                _noCache: true 
+            });
+            
             const weeks = new Map();
             
             entries.forEach(entry => {
@@ -457,7 +502,7 @@ class QueryService {
                     const endDate = entry.periodEnd ? safeGetDate(entry.periodEnd) : null;
                     
                     if (startDate && endDate) {
-                        const weekLabel = `${startDate.toLocaleDateString('pt-BR')} a ${endDate.toLocaleDateString('pt-BR')}`;
+                        const weekLabel = `${formatDateBR(startDate)} a ${formatDateBR(endDate)}`;
                         weeks.set(entry.weekIdentifier, {
                             identifier: entry.weekIdentifier,
                             label: weekLabel,
@@ -469,12 +514,25 @@ class QueryService {
             });
 
             const result = Array.from(weeks.values());
-            await this.cache.set(cacheKey, result);
+            if (result.length > 0) {
+                await this.cache.set(cacheKey, result);
+            }
             return result;
         } catch (error) {
             console.error('❌ Erro ao buscar semanas:', error);
             return [];
         }
+    }
+
+    // Método auxiliar para criar chaves de cache consistentes
+    createCacheKey(prefix, filters) {
+        const cleanFilters = {};
+        Object.keys(filters).forEach(key => {
+            if (filters[key] && key !== '_noCache') {
+                cleanFilters[key] = filters[key];
+            }
+        });
+        return `${prefix}_${JSON.stringify(cleanFilters)}`;
     }
 }
 
@@ -486,6 +544,10 @@ const cacheManager = new CacheManager();
 const notificationManager = new NotificationManager();
 const progressManager = new ProgressManager();
 const queryService = new QueryService(cacheManager);
+
+// Expor globalmente para debug
+window.queryService = queryService;
+window.cacheManager = cacheManager;
 
 // ===============================
 // FUNÇÕES UTILITÁRIAS
@@ -512,15 +574,32 @@ function formatCurrency(value) {
     }).format(value || 0);
 }
 
-function formatDateForInput(date) {
-    return date.toISOString().split('T')[0];
+function formatDateBR(date) {
+    // Formata data para DD/MM/AAAA com GMT-3
+    const options = { 
+        timeZone: 'America/Sao_Paulo',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    };
+    return date.toLocaleDateString('pt-BR', options);
 }
 
-function safeGetDate(dateValue) {
-    if (!dateValue) return new Date();
-    if (dateValue.toDate) return dateValue.toDate();
-    if (dateValue instanceof Date) return dateValue;
-    return new Date(dateValue);
+function formatDateForInput(date) {
+    // Ajusta para GMT-3 antes de formatar
+    const adjusted = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+    return adjusted.toISOString().split('T')[0];
+}
+
+function safeGetDate(value) {
+    if (!value) return null;
+    if (value.toDate) return value.toDate();
+    if (value instanceof Date) return value;
+    if (typeof value === 'string' && value.length >= 8) {
+        const d = new Date(value);
+        return isNaN(d) ? null : d;
+    }
+    return null;
 }
 
 function getUserSegment(email) {
@@ -645,7 +724,9 @@ window.handleLogin = async function() {
 
 window.handleLogout = async function() {
     try {
+        // Limpar completamente o cache ao fazer logout
         cacheManager.clear();
+        
         if (auth) {
             await window.firebase.signOut(auth);
         }
@@ -681,17 +762,38 @@ function showLoginScreen() {
 }
 
 async function showDashboard() {
+    // Resetar filtros ao mostrar dashboard
+    currentFilters = {
+        segment: (currentUserData.segment !== 'executive') ? currentUserData.segment : '',
+        store: '',
+        month: selectedMonth,
+        period: '',
+        startDate: '',
+        endDate: '',
+        weekIdentifier: ''
+    };
+    
+    // Limpar elementos de filtro
+    hideElement('weekFilter');
+    hideElement('customDateRange');
+    
+    const filterWeek = getElementById('filterWeek');
+    if (filterWeek) {
+        filterWeek.innerHTML = '<option value="">Todas as semanas</option>';
+    }
+    
     getElementById('loginScreen').style.display = 'none';
     getElementById('dashboard').style.display = 'block';
     
     setElementText('welcomeText', `Bem-vindo, ${currentUserData.name}`);
-    setElementText('currentDate', new Date().toLocaleDateString('pt-BR'));
+    setElementText('currentDate', formatDateBR(new Date()));
     
     try {
         setupMonthYearSelector();
         setupFiltersPanel();
         setupFormDefaults();
         await loadStoresData();
+        await checkAndInitializeData();
         await updateDashboard();
         
         setTimeout(() => {
@@ -749,18 +851,19 @@ function setupFiltersPanel() {
     if (filterSegment) {
         filterSegment.innerHTML = '<option value="">Todos os segmentos</option>';
         
-        Object.keys(businessData).forEach(segment => {
-            const option = document.createElement('option');
-            option.value = segment;
-            option.textContent = businessData[segment].name;
-            
-            if (currentUserData.segment !== 'executive' && segment === currentUserData.segment) {
-                option.selected = true;
-                currentFilters.segment = segment;
-            }
-            
-            filterSegment.appendChild(option);
-        });
+        // Se não for executivo, esconde o seletor de segmento
+        if (currentUserData.segment !== 'executive') {
+            filterSegment.parentElement.style.display = 'none';
+            currentFilters.segment = currentUserData.segment;
+        } else {
+            filterSegment.parentElement.style.display = 'block';
+            Object.keys(businessData).forEach(segment => {
+                const option = document.createElement('option');
+                option.value = segment;
+                option.textContent = businessData[segment].name;
+                filterSegment.appendChild(option);
+            });
+        }
         
         if (currentFilters.segment) {
             setTimeout(() => {
@@ -836,11 +939,20 @@ async function loadStoresData() {
     let stores = [];
     
     if (userSegment === 'executive') {
-        Object.values(businessData).forEach(segment => {
-            stores = [...stores, ...segment.stores.map(store => `${segment.name} - ${store}`)];
+        Object.keys(businessData).forEach(segmentKey => {
+            const segment = businessData[segmentKey];
+            stores = [...stores, ...segment.stores.map(store => ({
+                display: `${segment.name} - ${store}`,
+                value: store,
+                segment: segmentKey
+            }))];
         });
     } else {
-        stores = businessData[userSegment]?.stores || [];
+        stores = businessData[userSegment]?.stores.map(store => ({
+            display: store,
+            value: store,
+            segment: userSegment
+        })) || [];
     }
     
     populateStoreSelects(stores);
@@ -855,12 +967,162 @@ function populateStoreSelects(stores) {
             select.innerHTML = '<option value="">Selecione uma loja</option>';
             stores.forEach(store => {
                 const option = document.createElement('option');
-                option.value = store;
-                option.textContent = store;
+                option.value = store.value;
+                option.textContent = store.display;
+                option.dataset.segment = store.segment;
                 select.appendChild(option);
             });
         }
     });
+}
+
+// ===============================
+// AUTO-INICIALIZAÇÃO DE DADOS
+// ===============================
+
+async function checkAndInitializeData() {
+    try {
+        // Verificar se já existem dados iniciais
+        const { collection, query, limit, getDocs } = window.firebase;
+        const checkQuery = query(collection(db, 'initialization'), limit(1));
+        const snapshot = await getDocs(checkQuery);
+        
+        if (snapshot.empty) {
+            console.log('🤖 Sistema não inicializado. Criando estrutura inicial...');
+            await initializeSystemData();
+        } else {
+            console.log('✅ Sistema já inicializado');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao verificar inicialização:', error);
+    }
+}
+
+async function initializeSystemData() {
+    try {
+        progressManager.show();
+        progressManager.update(10);
+        
+        // Marcar sistema como inicializado
+        await window.firebase.setDoc(window.firebase.doc(db, 'initialization', 'system'), {
+            initialized: true,
+            date: window.firebase.serverTimestamp(),
+            version: '4.0'
+        });
+        
+        progressManager.update(30);
+        
+        // Criar configurações padrão
+        await createDefaultSettings();
+        
+        progressManager.update(50);
+        
+        // Criar metas iniciais para o mês atual
+        await createInitialTargets();
+        
+        progressManager.update(70);
+        
+        // Criar alguns dados de exemplo
+        await createSampleSalesData();
+        
+        progressManager.update(100);
+        
+        notificationManager.show('Sistema Inicializado', 'Estrutura inicial criada com sucesso!', 'success');
+        
+        setTimeout(() => progressManager.hide(), 500);
+    } catch (error) {
+        console.error('❌ Erro na inicialização:', error);
+        progressManager.hide();
+    }
+}
+
+async function createDefaultSettings() {
+    const settings = {
+        businessHours: { open: '08:00', close: '22:00' },
+        currency: 'BRL',
+        timezone: 'America/Sao_Paulo',
+        lastUpdate: window.firebase.serverTimestamp()
+    };
+    
+    await window.firebase.setDoc(window.firebase.doc(db, 'system_settings', 'defaults'), settings);
+}
+
+async function createInitialTargets() {
+    const currentMonth = getCurrentMonth();
+    const targets = [
+        { segment: 'conveniencias', store: 'Loja 1', value: 50000 },
+        { segment: 'conveniencias', store: 'Loja 2', value: 45000 },
+        { segment: 'conveniencias', store: 'Loja 3', value: 40000 },
+        { segment: 'petiscarias', store: 'Loja 1', value: 35000 },
+        { segment: 'petiscarias', store: 'Loja 2', value: 30000 },
+        { segment: 'diskchopp', store: 'Delivery', value: 60000 }
+    ];
+    
+    for (const target of targets) {
+        const targetId = `${target.segment}_${target.store}_${currentMonth}_monthly`;
+        await window.firebase.setDoc(window.firebase.doc(db, 'targets', targetId), {
+            ...target,
+            month: currentMonth,
+            type: 'monthly',
+            date: window.firebase.serverTimestamp(),
+            user: currentUser.email
+        });
+    }
+}
+
+async function createSampleSalesData() {
+    const today = new Date();
+    const samples = [];
+    
+    // Criar dados para os últimos 7 dias
+    for (let i = 0; i < 7; i++) {
+        const sampleDate = new Date(today);
+        sampleDate.setDate(today.getDate() - i);
+        
+        if (currentUserData.segment === 'conveniencias' || currentUserData.segment === 'executive') {
+            samples.push({
+                segment: 'conveniencias',
+                store: 'Loja 1',
+                value: 1500 + Math.random() * 1000,
+                entryDate: window.firebase.Timestamp.fromDate(sampleDate),
+                month: formatMonthYear(sampleDate),
+                entryType: 'single',
+                user: currentUser.email,
+                createdAt: window.firebase.serverTimestamp()
+            });
+        }
+        
+        if (currentUserData.segment === 'petiscarias' || currentUserData.segment === 'executive') {
+            samples.push({
+                segment: 'petiscarias',
+                store: 'Loja 1',
+                value: 1200 + Math.random() * 800,
+                entryDate: window.firebase.Timestamp.fromDate(sampleDate),
+                month: formatMonthYear(sampleDate),
+                entryType: 'single',
+                user: currentUser.email,
+                createdAt: window.firebase.serverTimestamp()
+            });
+        }
+        
+        if (currentUserData.segment === 'diskchopp' || currentUserData.segment === 'executive') {
+            samples.push({
+                segment: 'diskchopp',
+                store: 'Delivery',
+                value: 2000 + Math.random() * 1500,
+                entryDate: window.firebase.Timestamp.fromDate(sampleDate),
+                month: formatMonthYear(sampleDate),
+                entryType: 'single',
+                user: currentUser.email,
+                createdAt: window.firebase.serverTimestamp()
+            });
+        }
+    }
+    
+    // Salvar todos os dados de exemplo
+    for (const sample of samples) {
+        await window.firebase.addDoc(window.firebase.collection(db, 'sales_entries'), sample);
+    }
 }
 
 // ===============================
@@ -925,7 +1187,7 @@ async function calculateAnalysisMetrics(entries, filters) {
             const endDate = new Date(filters.endDate);
             const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
             averageDaily = totalRevenue / Math.max(daysDiff, 1);
-        } else if (filters.week) {
+        } else if (filters.weekIdentifier) {
             averageDaily = totalRevenue / 7;
         } else {
             const monthDate = new Date(filters.month + '-01');
@@ -945,12 +1207,8 @@ async function calculateAnalysisMetrics(entries, filters) {
     }
     
     if (filters.store && filters.month) {
-        const target = await queryService.getTarget(
-            filters.segment || currentUserData.segment,
-            filters.store,
-            filters.month,
-            'monthly'
-        );
+        const segment = filters.segment || currentUserData.segment;
+        const target = await queryService.getTarget(segment, filters.store, filters.month, 'monthly');
         
         if (target > 0) {
             goalProgress = (totalRevenue / target) * 100;
@@ -978,7 +1236,7 @@ function updateAnalysisDisplay(result) {
     let projectionInfo = 'Estimativa mensal';
     let goalInfo = 'Meta não definida';
     
-    if (result.filters.week) {
+    if (result.filters.weekIdentifier) {
         revenueInfo = 'Semana selecionada';
         dailyInfo = 'Média da semana';
     } else if (result.filters.startDate && result.filters.endDate) {
@@ -1068,7 +1326,7 @@ async function updateDataTables(entries, filters) {
     }
 }
 
-function updateStoresTable(entries, filters) {
+async function updateStoresTable(entries, filters) {
     const tbody = getElementById('storesTableBody');
     if (!tbody) return;
     
@@ -1081,6 +1339,7 @@ function updateStoresTable(entries, filters) {
         if (!storeData.has(store)) {
             storeData.set(store, {
                 store,
+                segment: entry.segment,
                 totalRevenue: 0,
                 entries: 0,
                 lastEntry: null
@@ -1101,12 +1360,13 @@ function updateStoresTable(entries, filters) {
         return;
     }
     
-    storeData.forEach(async (data) => {
-        const target = filters.segment && filters.month ? 
-            await queryService.getTarget(filters.segment, data.store, filters.month, 'monthly') : 0;
+    for (const [store, data] of storeData) {
+        const segment = data.segment || filters.segment || currentUserData.segment;
+        const target = filters.month ? 
+            await queryService.getTarget(segment, data.store, filters.month, 'monthly') : 0;
         
         const goalProgress = target > 0 ? (data.totalRevenue / target) * 100 : 0;
-        const averageDaily = data.totalRevenue / Math.max(data.entries * 7, 1);
+        const averageDaily = data.totalRevenue / Math.max(data.entries, 1);
         
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -1126,7 +1386,7 @@ function updateStoresTable(entries, filters) {
             </td>
         `;
         tbody.appendChild(row);
-    });
+    }
 }
 
 function updateTimelineTable(entries) {
@@ -1149,13 +1409,13 @@ function updateTimelineTable(entries) {
 function createTimelineRow(entry) {
     try {
         const entryDate = safeGetDate(entry.entryDate);
-        const entryDateStr = entryDate.toLocaleDateString('pt-BR');
+        const entryDateStr = entryDate ? formatDateBR(entryDate) : '—';
         
         let periodStr = 'Dia específico';
         if (entry.entryType === 'period' && entry.periodStart && entry.periodEnd) {
-            const startDate = safeGetDate(entry.periodStart).toLocaleDateString('pt-BR');
-            const endDate = safeGetDate(entry.periodEnd).toLocaleDateString('pt-BR');
-            periodStr = `${startDate} a ${endDate}`;
+            const startDate = safeGetDate(entry.periodStart);
+            const endDate = safeGetDate(entry.periodEnd);
+            periodStr = `${formatDateBR(startDate)} a ${formatDateBR(endDate)}`;
         } else if (entry.entryType === 'week') {
             periodStr = 'Semana completa';
         }
@@ -1202,10 +1462,16 @@ window.handleStoreChange = function() {
 
 window.handleMonthChange = async function() {
     currentFilters.month = getElementValue('filterMonth');
-    currentFilters.week = '';
+    currentFilters.weekIdentifier = '';
     
+    // Limpar o seletor de semanas
     const filterWeek = getElementById('filterWeek');
-    if (filterWeek && currentFilters.segment && currentFilters.month) {
+    if (filterWeek) {
+        filterWeek.innerHTML = '<option value="">Todas as semanas</option>';
+    }
+    
+    // Se semana está visível e temos segmento e mês, atualizar
+    if (currentFilters.period === 'week' && currentFilters.segment && currentFilters.month) {
         await updateWeeksFilter();
     }
 };
@@ -1237,7 +1503,7 @@ window.handleDateRangeChange = function() {
 };
 
 window.handleWeekChange = function() {
-    currentFilters.week = getElementValue('filterWeek');
+    currentFilters.weekIdentifier = getElementValue('filterWeek');
 };
 
 window.handleEntryTypeChange = function() {
@@ -1316,7 +1582,7 @@ function updateDependentFilters() {
 
 function resetDependentFilters() {
     currentFilters.store = '';
-    currentFilters.week = '';
+    currentFilters.weekIdentifier = '';
     
     setElementValue('filterStore', '');
     setElementValue('filterWeek', '');
@@ -1359,7 +1625,7 @@ async function updateWeeksFilter() {
 function clearFiltersState() {
     currentFilters.startDate = '';
     currentFilters.endDate = '';
-    currentFilters.week = '';
+    currentFilters.weekIdentifier = '';
     setElementValue('startDate', '');
     setElementValue('endDate', '');
     setElementValue('filterWeek', '');
@@ -1397,10 +1663,6 @@ window.filterByStore = function(store) {
     setElementValue('filterStore', store);
     currentFilters.store = store;
     handleAnalyze();
-};
-
-window.exportTableData = function() {
-    notificationManager.show('Exportar Dados', 'Funcionalidade em desenvolvimento', 'info');
 };
 
 window.refreshTableData = function() {
@@ -1445,7 +1707,9 @@ window.handleSubmitSales = async function() {
         
         progressManager.update(80);
         
-        cacheManager.invalidatePattern(currentUserData.segment);
+        // Invalidar cache de forma mais inteligente
+        cacheManager.invalidateSegmentCache(entryData.segment);
+        cacheManager.invalidateMonthCache(entryData.month);
         
         clearSalesForm();
         
@@ -1478,10 +1742,14 @@ window.handleSetTarget = async function() {
     try {
         progressManager.update(50);
         
-        const targetId = `${currentUserData.segment}_${targetData.store}_${selectedMonth}_${targetData.type}`;
+        const segment = currentUserData.segment !== 'executive' ? 
+            currentUserData.segment : 
+            (getElementById('targetStoreSelect').selectedOptions[0]?.dataset.segment || currentUserData.segment);
+        
+        const targetId = `${segment}_${targetData.store}_${selectedMonth}_${targetData.type}`;
         
         const targetDocData = {
-            segment: currentUserData.segment,
+            segment: segment,
             store: targetData.store,
             month: selectedMonth,
             type: targetData.type,
@@ -1498,6 +1766,7 @@ window.handleSetTarget = async function() {
         
         progressManager.update(80);
         
+        // Invalidar cache de targets
         cacheManager.invalidatePattern('target');
         
         showAlert('targetAlert', 'Meta definida com sucesso!', 'success');
@@ -1587,8 +1856,12 @@ function validateTargetData(data) {
 }
 
 function prepareSalesEntryData(salesData) {
+    const segment = currentUserData.segment !== 'executive' ? 
+        currentUserData.segment : 
+        (getElementById('storeSelect').selectedOptions[0]?.dataset.segment || currentUserData.segment);
+    
     const baseData = {
-        segment: currentUserData.segment,
+        segment: segment,
         store: salesData.store,
         value: salesData.value,
         notes: salesData.notes,
@@ -1691,26 +1964,40 @@ window.deleteEntry = async function(entryId) {
     if (!confirm('Confirma a exclusão deste lançamento?')) {
         return;
     }
-    
+
     try {
         progressManager.show();
-        progressManager.update(50);
+        progressManager.update(40);
+
+        // Buscar o documento para obter informações antes de deletar
+        const docRef = window.firebase.doc(db, 'sales_entries', entryId);
+        const docSnap = await window.firebase.getDoc(docRef);
         
-        await window.firebase.deleteDoc(window.firebase.doc(db, 'sales_entries', entryId));
+        let segment = currentUserData.segment;
+        let month = selectedMonth;
         
-        cacheManager.invalidatePattern(currentUserData.segment);
-        
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            segment = data.segment || segment;
+            month = data.month || month;
+        }
+
+        // Deletar o documento
+        await window.firebase.deleteDoc(docRef);
+
+        // Invalidar cache de forma inteligente
+        cacheManager.invalidateSegmentCache(segment);
+        cacheManager.invalidateMonthCache(month);
+
         progressManager.update(100);
         showAlert('entryAlert', 'Lançamento excluído com sucesso!', 'success');
-        
+
         await updateDashboard();
-        setTimeout(() => progressManager.hide(), 500);
-        
-        notificationManager.show('Excluído!', 'Lançamento removido com sucesso', 'success');
     } catch (error) {
         console.error('❌ Erro ao excluir lançamento:', error);
-        progressManager.hide();
         showAlert('entryAlert', `Erro ao excluir lançamento: ${error.message}`, 'error');
+    } finally {
+        progressManager.hide();
     }
 };
 
@@ -1728,7 +2015,7 @@ function cancelEdit() {
 }
 
 // ===============================
-// GRÁFICOS E MODAIS
+// GRÁFICOS
 // ===============================
 
 function renderComparisonChart() {
@@ -1741,19 +2028,38 @@ function renderComparisonChart() {
     
     const ctx = canvas.getContext('2d');
     
+    // Coletar dados atuais da tabela
+    const labels = [];
+    const revenues = [];
+    const targets = [];
+    
+    const rows = document.querySelectorAll('#storesTableBody tr');
+    rows.forEach(row => {
+        const cells = row.cells;
+        if (cells.length >= 3) {
+            labels.push(cells[0].textContent.trim());
+            
+            const revenueText = cells[1].textContent.replace(/[^\d,]/g, '').replace(',', '.');
+            revenues.push(parseFloat(revenueText) || 0);
+            
+            const targetText = cells[2].textContent.replace(/[^\d,]/g, '').replace(',', '.');
+            targets.push(parseFloat(targetText) || 0);
+        }
+    });
+    
     chartInstances.comparison = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Loja 1', 'Loja 2', 'Loja 3'],
+            labels: labels,
             datasets: [{
                 label: 'Faturamento',
-                data: [12000, 15000, 8000],
+                data: revenues,
                 backgroundColor: 'rgba(102, 126, 234, 0.8)',
                 borderColor: 'rgba(102, 126, 234, 1)',
                 borderWidth: 1
             }, {
                 label: 'Meta',
-                data: [10000, 12000, 9000],
+                data: targets,
                 backgroundColor: 'rgba(72, 187, 120, 0.8)',
                 borderColor: 'rgba(72, 187, 120, 1)',
                 borderWidth: 1
@@ -1785,38 +2091,299 @@ function renderComparisonChart() {
     });
 }
 
-window.showChartsModal = function() {
-    const modal = getElementById('chartsModal');
-    if (modal) {
-        modal.classList.add('show');
+// ===============================
+// RELATÓRIOS FUNCIONAIS
+// ===============================
+
+window.showSalesReport = async function() {
+    const modal = getElementById('reportModal');
+    const content = getElementById('reportContent');
+    
+    if (!modal || !content) return;
+    
+    content.innerHTML = '<div class="loading-row">Gerando relatório de vendas...</div>';
+    modal.classList.add('show');
+    
+    try {
+        const entries = await queryService.getSalesEntries({
+            segment: currentUserData.segment !== 'executive' ? currentUserData.segment : '',
+            month: selectedMonth
+        });
         
-        setTimeout(() => {
-            renderAdvancedCharts();
-        }, 300);
+        let html = `
+            <h4>📊 Relatório de Vendas - ${formatDisplayMonth(new Date(selectedMonth + '-01'))}</h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Loja</th>
+                        <th>Valor</th>
+                        <th>Tipo</th>
+                        <th>Observações</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        let total = 0;
+        entries.forEach(entry => {
+            const date = formatDateBR(safeGetDate(entry.entryDate));
+            total += entry.value || 0;
+            
+            html += `
+                <tr>
+                    <td>${date}</td>
+                    <td>${escapeHtml(entry.store)}</td>
+                    <td class="currency">${formatCurrency(entry.value)}</td>
+                    <td>${entry.entryType === 'single' ? 'Diário' : entry.entryType === 'week' ? 'Semanal' : 'Período'}</td>
+                    <td>${escapeHtml(entry.notes || '-')}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="2">Total</th>
+                        <th class="currency">${formatCurrency(total)}</th>
+                        <th colspan="2">${entries.length} lançamento(s)</th>
+                    </tr>
+                </tfoot>
+            </table>
+        `;
+        
+        content.innerHTML = html;
+    } catch (error) {
+        content.innerHTML = '<div class="alert alert-error">Erro ao gerar relatório</div>';
     }
 };
 
-window.closeChartsModal = function() {
-    const modal = getElementById('chartsModal');
+window.showTargetsReport = async function() {
+    const modal = getElementById('reportModal');
+    const content = getElementById('reportContent');
+    
+    if (!modal || !content) return;
+    
+    content.innerHTML = '<div class="loading-row">Gerando relatório de metas...</div>';
+    modal.classList.add('show');
+    
+    try {
+        const segments = currentUserData.segment === 'executive' ? 
+            Object.keys(businessData) : [currentUserData.segment];
+        
+        let html = `
+            <h4>🎯 Relatório de Metas - ${formatDisplayMonth(new Date(selectedMonth + '-01'))}</h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Segmento</th>
+                        <th>Loja</th>
+                        <th>Meta</th>
+                        <th>Realizado</th>
+                        <th>% Atingido</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        let totalTarget = 0;
+        let totalRevenue = 0;
+        
+        for (const segment of segments) {
+            const stores = businessData[segment].stores;
+            
+            for (const store of stores) {
+                const target = await queryService.getTarget(segment, store, selectedMonth, 'monthly');
+                
+                const entries = await queryService.getSalesEntries({
+                    segment: segment,
+                    store: store,
+                    month: selectedMonth
+                });
+                
+                const revenue = entries.reduce((sum, entry) => sum + (entry.value || 0), 0);
+                const percentage = target > 0 ? (revenue / target) * 100 : 0;
+                
+                totalTarget += target;
+                totalRevenue += revenue;
+                
+                html += `
+                    <tr>
+                        <td>${businessData[segment].name}</td>
+                        <td>${store}</td>
+                        <td class="currency">${formatCurrency(target)}</td>
+                        <td class="currency">${formatCurrency(revenue)}</td>
+                        <td>${percentage.toFixed(1)}%</td>
+                    </tr>
+                `;
+            }
+        }
+        
+        const totalPercentage = totalTarget > 0 ? (totalRevenue / totalTarget) * 100 : 0;
+        
+        html += `
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="2">Total</th>
+                        <th class="currency">${formatCurrency(totalTarget)}</th>
+                        <th class="currency">${formatCurrency(totalRevenue)}</th>
+                        <th>${totalPercentage.toFixed(1)}%</th>
+                    </tr>
+                </tfoot>
+            </table>
+        `;
+        
+        content.innerHTML = html;
+    } catch (error) {
+        content.innerHTML = '<div class="alert alert-error">Erro ao gerar relatório</div>';
+    }
+};
+
+window.showComparativeAnalysis = async function() {
+    const modal = getElementById('reportModal');
+    const content = getElementById('reportContent');
+    
+    if (!modal || !content) return;
+    
+    content.innerHTML = '<div class="loading-row">Gerando análise comparativa...</div>';
+    modal.classList.add('show');
+    
+    try {
+        const currentMonth = new Date(selectedMonth + '-01');
+        const previousMonth = new Date(currentMonth);
+        previousMonth.setMonth(previousMonth.getMonth() - 1);
+        const previousMonthStr = formatMonthYear(previousMonth);
+        
+        const segments = currentUserData.segment === 'executive' ? 
+            Object.keys(businessData) : [currentUserData.segment];
+        
+        let html = `
+            <h4>📊 Análise Comparativa - ${formatDisplayMonth(currentMonth)} vs ${formatDisplayMonth(previousMonth)}</h4>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Segmento/Loja</th>
+                        <th>${formatDisplayMonth(previousMonth)}</th>
+                        <th>${formatDisplayMonth(currentMonth)}</th>
+                        <th>Variação</th>
+                        <th>%</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        let totalPrevious = 0;
+        let totalCurrent = 0;
+        
+        for (const segment of segments) {
+            const stores = businessData[segment].stores;
+            
+            for (const store of stores) {
+                const entriesPrevious = await queryService.getSalesEntries({
+                    segment: segment,
+                    store: store,
+                    month: previousMonthStr
+                });
+                
+                const entriesCurrent = await queryService.getSalesEntries({
+                    segment: segment,
+                    store: store,
+                    month: selectedMonth
+                });
+                
+                const revenuePrevious = entriesPrevious.reduce((sum, entry) => sum + (entry.value || 0), 0);
+                const revenueCurrent = entriesCurrent.reduce((sum, entry) => sum + (entry.value || 0), 0);
+                const variation = revenueCurrent - revenuePrevious;
+                const percentage = revenuePrevious > 0 ? (variation / revenuePrevious) * 100 : 0;
+                
+                totalPrevious += revenuePrevious;
+                totalCurrent += revenueCurrent;
+                
+                const variationClass = variation >= 0 ? 'positive' : 'negative';
+                const arrow = variation >= 0 ? '↑' : '↓';
+                
+                html += `
+                    <tr>
+                        <td>${businessData[segment].name} - ${store}</td>
+                        <td class="currency">${formatCurrency(revenuePrevious)}</td>
+                        <td class="currency">${formatCurrency(revenueCurrent)}</td>
+                        <td class="currency ${variationClass}">${arrow} ${formatCurrency(Math.abs(variation))}</td>
+                        <td class="${variationClass}">${percentage.toFixed(1)}%</td>
+                    </tr>
+                `;
+            }
+        }
+        
+        const totalVariation = totalCurrent - totalPrevious;
+        const totalPercentage = totalPrevious > 0 ? (totalVariation / totalPrevious) * 100 : 0;
+        const totalClass = totalVariation >= 0 ? 'positive' : 'negative';
+        const totalArrow = totalVariation >= 0 ? '↑' : '↓';
+        
+        html += `
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th>Total</th>
+                        <th class="currency">${formatCurrency(totalPrevious)}</th>
+                        <th class="currency">${formatCurrency(totalCurrent)}</th>
+                        <th class="currency ${totalClass}">${totalArrow} ${formatCurrency(Math.abs(totalVariation))}</th>
+                        <th class="${totalClass}">${totalPercentage.toFixed(1)}%</th>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <style>
+                .positive { color: #48bb78; }
+                .negative { color: #e53e3e; }
+            </style>
+        `;
+        
+        content.innerHTML = html;
+    } catch (error) {
+        content.innerHTML = '<div class="alert alert-error">Erro ao gerar análise</div>';
+    }
+};
+
+window.exportCurrentData = async function() {
+    try {
+        const entries = await queryService.getSalesEntries({
+            segment: currentUserData.segment !== 'executive' ? currentUserData.segment : '',
+            month: selectedMonth
+        });
+        
+        let csv = 'Data,Loja,Valor,Tipo,Observações\n';
+        
+        entries.forEach(entry => {
+            const date = formatDateBR(safeGetDate(entry.entryDate));
+            csv += `"${date}","${entry.store}","${entry.value}","${entry.entryType}","${entry.notes || ''}"\n`;
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `ice-beer-vendas-${selectedMonth}.csv`);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        notificationManager.show('Exportação Concluída', 'Arquivo CSV baixado com sucesso!', 'success');
+    } catch (error) {
+        console.error('❌ Erro ao exportar:', error);
+        notificationManager.show('Erro', 'Erro ao exportar dados', 'error');
+    }
+};
+
+window.closeReportModal = function() {
+    const modal = getElementById('reportModal');
     if (modal) {
         modal.classList.remove('show');
     }
-};
-
-function renderAdvancedCharts() {
-    notificationManager.show('Gráficos', 'Funcionalidade em desenvolvimento', 'info');
-}
-
-window.generateDetailedReport = function() {
-    notificationManager.show('Relatório PDF', 'Funcionalidade em desenvolvimento', 'info');
-};
-
-window.exportToExcel = function() {
-    notificationManager.show('Excel Export', 'Funcionalidade em desenvolvimento', 'info');
-};
-
-window.backupData = function() {
-    notificationManager.show('Backup', 'Funcionalidade em desenvolvimento', 'info');
 };
 
 window.showCacheStats = function() {
@@ -1828,7 +2395,7 @@ window.showCacheStats = function() {
 
 function createStatsModal(stats) {
     const overlay = document.createElement('div');
-    overlay.className = 'modal-overlay';
+    overlay.className = 'modal-overlay show';
     overlay.innerHTML = `
         <div class="modal">
             <div class="modal-header">
@@ -1854,6 +2421,11 @@ function createStatsModal(stats) {
                         <div class="stat-label">Cache Misses</div>
                     </div>
                 </div>
+                <div style="margin-top: 20px; text-align: center;">
+                    <button class="action-btn secondary" onclick="window.cacheManager.clear(); window.location.reload();">
+                        🗑️ Limpar Cache e Recarregar
+                    </button>
+                </div>
             </div>
         </div>
     `;
@@ -1862,24 +2434,6 @@ function createStatsModal(stats) {
 
 window.closeNotification = function() {
     notificationManager.hide();
-};
-
-window.runSystemDiagnostic = function() {
-    console.log('🧪 Executando diagnóstico do sistema...');
-    
-    const diagnostics = [
-        { test: 'Firebase', status: isFirebaseInitialized ? 'OK' : 'ERROR' },
-        { test: 'Cache', status: cacheManager ? 'OK' : 'ERROR' },
-        { test: 'Autenticação', status: currentUser ? 'OK' : 'WAITING' },
-        { test: 'Interface', status: document.getElementById('dashboard') ? 'OK' : 'ERROR' }
-    ];
-    
-    diagnostics.forEach(({ test, status }) => {
-        const icon = status === 'OK' ? '✅' : status === 'ERROR' ? '❌' : '⏳';
-        console.log(`${icon} ${test}: ${status}`);
-    });
-    
-    notificationManager.show('Diagnóstico', 'Resultados no console', 'info');
 };
 
 // ===============================
@@ -1925,10 +2479,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('✅ Características:');
     console.log('  - 🔥 Firebase Rules configuradas');
     console.log('  - 🤖 Auto Setup ativo');
-    console.log('  - 🧪 Debug Tools disponíveis');
-    console.log('  - 💾 Cache inteligente');
-    console.log('  - 📱 PWA ready');
-    console.log('  - 📊 Relatórios flexíveis (junho 2025 - dezembro 2028)');
+    console.log('  - 💾 Cache inteligente CORRIGIDO');
+    console.log('  - 📊 Relatórios funcionais');
+    console.log('  - 📅 Formato DD/MM/AAAA com GMT-3');
+    console.log('  - 🔒 Isolamento por segmento');
+    console.log('  - 🐛 Bugs de cache resolvidos');
     
     try {
         // Configurar indicadores de status
@@ -1948,7 +2503,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
             
             if (pwStatus) {
-                pwStatus.textContent = '📱 PWA Configurado';
+                pwStatus.textContent = '📱 Sistema Pronto';
                 pwStatus.classList.add('success');
             }
             
@@ -1967,12 +2522,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Expor globalmente para debug
         window.cacheManager = cacheManager;
         window.notificationManager = notificationManager;
-        window.runSystemDiagnostic = runSystemDiagnostic;
         
-        console.log('🧪 Debug Tools disponíveis:');
-        console.log('  - runSystemDiagnostic() - Diagnóstico do sistema');
-        console.log('  - cacheManager.getStats() - Stats do cache');
-        console.log('  - cacheManager.clear() - Limpar cache');
+        console.log('✅ Sistema pronto para uso!');
         
     } catch (error) {
         console.error('❌ Erro na inicialização:', error);

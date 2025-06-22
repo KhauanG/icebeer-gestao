@@ -1,213 +1,216 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // ===============================
-    // FUNÇÕES AUXILIARES
-    // ===============================
-    
+
+    // ─────────┐
+    // Helpers  │
+    // ─────────┘
     function isAuthenticated() {
       return request.auth != null;
     }
-    
+
     function isAuthorizedUser() {
-      return isAuthenticated() && 
+      return isAuthenticated() &&
         request.auth.token.email in [
           'conveniencias@icebeer.com',
-          'petiscarias@icebeer.com', 
+          'petiscarias@icebeer.com',
           'diskchopp@icebeer.com',
           'executivo@icebeer.com'
         ];
     }
-    
+
+    /** devolve: conveniencias | petiscarias | diskchopp | executive | '' */
     function getUserSegment() {
       return request.auth.token.email == 'conveniencias@icebeer.com' ? 'conveniencias' :
-             request.auth.token.email == 'petiscarias@icebeer.com' ? 'petiscarias' :
-             request.auth.token.email == 'diskchopp@icebeer.com' ? 'diskchopp' :
-             request.auth.token.email == 'executivo@icebeer.com' ? 'executive' : null;
+             request.auth.token.email == 'petiscarias@icebeer.com'   ? 'petiscarias'   :
+             request.auth.token.email == 'diskchopp@icebeer.com'     ? 'diskchopp'     :
+             request.auth.token.email == 'executivo@icebeer.com'     ? 'executive'     : '';
     }
-    
-    function isExecutive() {
-      return request.auth.token.email == 'executivo@icebeer.com';
+
+    function isExecutive()        { return getUserSegment() == 'executive'; }
+    function hasSegmentAccess(s)  { return isExecutive() || getUserSegment() == s; }
+    function isOwner(u)           { return request.auth.token.email == u;  }
+
+    function isValidStore(sgmt, store) {
+      return (sgmt == 'conveniencias' && store in ['Loja 1','Loja 2','Loja 3']) ||
+             (sgmt == 'petiscarias'  && store in ['Loja 1','Loja 2'])           ||
+             (sgmt == 'diskchopp'    && store in ['Delivery']);
     }
-    
-    function hasSegmentAccess(segment) {
-      return isExecutive() || getUserSegment() == segment;
+
+    function isValidMonth(m) {
+      // 2025-06 até 2028-12
+      return m.matches('202[5-8]-(0[6-9]|1[0-2])') ||
+             m.matches('202[6-8]-(0[1-9]|1[0-2])');
     }
-    
-    function isValidStore(segment, store) {
-      return (segment == 'conveniencias' && store in ['Loja 1', 'Loja 2', 'Loja 3']) ||
-             (segment == 'petiscarias' && store in ['Loja 1', 'Loja 2']) ||
-             (segment == 'diskchopp' && store in ['Delivery']);
+
+    // ─────────┐
+    // Schemas  │
+    // ─────────┘
+    function validateSalesEntry(d) {
+      return d.keys().hasAll(
+               ['segment','store','value','entryDate','month','entryType','user']) &&
+             d.segment   in ['conveniencias','petiscarias','diskchopp'] &&
+             d.store     is string && d.store != '' &&
+             d.value     is number && d.value > 0 && d.value <= 1000000 &&
+             d.entryDate is timestamp &&
+             d.month     is string && isValidMonth(d.month) &&
+             d.entryType in ['single','period','week'] &&
+             d.user      == request.auth.token.email &&
+             hasSegmentAccess(d.segment) &&
+             isValidStore(d.segment, d.store);
     }
-    
-    function isValidDateRange(dateValue) {
-      let startLimit = timestamp.date(2025, 6, 1);
-      let endLimit = timestamp.date(2028, 12, 31);
-      return dateValue >= startLimit && dateValue <= endLimit;
+
+    function validateTarget(d) {
+      return d.keys().hasAll(
+               ['segment','store','month','type','value','user']) &&
+             d.segment in ['conveniencias','petiscarias','diskchopp'] &&
+             d.store   is string && d.store != '' &&
+             d.month   is string && isValidMonth(d.month) &&
+             d.type    in ['monthly','weekly','daily'] &&
+             d.value   is number && d.value > 0 && d.value <= 10000000 &&
+             d.user    == request.auth.token.email &&
+             hasSegmentAccess(d.segment) &&
+             isValidStore(d.segment, d.store);
     }
-    
-    function isValidMonth(month) {
-      return month.matches('202[5-8]-(0[6-9]|1[0-2])') || 
-             month.matches('202[6-8]-(0[1-9]|1[0-2])');
+
+    function validateSystemLog(d) {
+      return d.keys().hasAll(['timestamp','level','message','user']) &&
+             d.level in ['info','warning','error','debug'] &&
+             d.user  == request.auth.token.email;
     }
-    
-    // Validação mais flexível para vendas
-    function validateSalesEntry(data) {
-      return data.keys().hasAll(['segment', 'store', 'value', 'entryDate', 'month', 'entryType', 'user']) &&
-             data.segment is string && data.segment in ['conveniencias', 'petiscarias', 'diskchopp'] &&
-             data.store is string &&
-             data.value is number && data.value > 0 && data.value <= 1000000 &&
-             data.entryDate is timestamp &&
-             data.month is string &&
-             data.entryType is string && data.entryType in ['single', 'period', 'week'] &&
-             data.user is string && data.user == request.auth.token.email;
-    }
-    
-    // Validação mais flexível para metas
-    function validateTarget(data) {
-      return data.keys().hasAll(['segment', 'store', 'month', 'type', 'value', 'user']) &&
-             data.segment is string && data.segment in ['conveniencias', 'petiscarias', 'diskchopp'] &&
-             data.store is string &&
-             data.month is string &&
-             data.type is string && data.type in ['monthly', 'weekly', 'daily'] &&
-             data.value is number && data.value > 0 && data.value <= 10000000 &&
-             data.user is string && data.user == request.auth.token.email;
-    }
-    
-    function validateSystemLog(data) {
-      return data.keys().hasAll(['timestamp', 'level', 'message', 'user']) &&
-             data.level in ['info', 'warning', 'error', 'debug'] &&
-             data.user == request.auth.token.email;
-    }
-    
-    // ===============================
-    // SALES_ENTRIES - Lançamentos de Vendas
-    // ===============================
-    
-    match /sales_entries/{entryId} {
-      allow read: if isAuthorizedUser();
-      
-      allow create: if isAuthorizedUser() && 
-                       validateSalesEntry(request.resource.data);
-      
+
+    // ─────────────┐
+    //  Coleções    │
+    // ─────────────┘
+
+    // SALES_ENTRIES
+    match /sales_entries/{docId} {
+      allow read:   if isAuthorizedUser() &&
+                      (isExecutive() || resource.data.segment == getUserSegment());
+
+      allow create: if isAuthorizedUser() &&
+                      validateSalesEntry(request.resource.data);
+
       allow update: if isAuthorizedUser() &&
-                       validateSalesEntry(request.resource.data);
-      
-      allow delete: if isAuthorizedUser();
+                      validateSalesEntry(request.resource.data) &&
+                      (isOwner(resource.data.user) || isExecutive());
+
+      allow delete: if isAuthorizedUser() &&
+                      (isOwner(resource.data.user) || isExecutive());
     }
-    
-    // ===============================
-    // TARGETS - Metas (Regras Simplificadas)
-    // ===============================
-    
-    match /targets/{targetId} {
-      allow read: if isAuthorizedUser();
-      
+
+    // TARGETS
+    match /targets/{docId} {
+      allow read:   if isAuthorizedUser() &&
+                      (isExecutive() || resource.data.segment == getUserSegment());
+
       allow create: if isAuthorizedUser() &&
                       validateTarget(request.resource.data);
-      
+
       allow update: if isAuthorizedUser() &&
-                      validateTarget(request.resource.data);
-      
-      allow delete: if isAuthorizedUser();
+                      validateTarget(request.resource.data) &&
+                      (isOwner(resource.data.user) || isExecutive());
+
+      allow delete: if isAuthorizedUser() &&
+                      (isOwner(resource.data.user) || isExecutive());
     }
-    
-    // ===============================
-    // USER_PROFILES - Perfis de Usuário
-    // ===============================
-    
-    match /user_profiles/{userId} {
-      allow read, write: if isAuthorizedUser();
+
+    // USER_PROFILES
+    match /user_profiles/{uid} {
+      allow read, write: if isAuthorizedUser() &&
+                           (uid == request.auth.uid || isExecutive());
     }
-    
-    // ===============================
-    // SYSTEM_LOGS - Logs do Sistema
-    // ===============================
-    
-    match /system_logs/{logId} {
-      allow read: if isAuthorizedUser();
-      
+
+    // SYSTEM_LOGS
+    match /system_logs/{docId} {
+      allow read:   if isAuthorizedUser() &&
+                      (isExecutive() || resource.data.user == request.auth.token.email);
+
       allow create: if isAuthorizedUser() && validateSystemLog(request.resource.data);
+      allow update, delete: if isExecutive();
     }
-    
-    // ===============================
-    // SYSTEM_SETTINGS - Configurações
-    // ===============================
-    
-    match /system_settings/{settingId} {
-      allow read: if isAuthorizedUser();
-      
-      allow write: if isAuthorizedUser();
+
+    // SYSTEM_SETTINGS
+    match /system_settings/{docId} {
+      allow read:  if isAuthorizedUser();
+      allow write: if isExecutive() ||
+                     !exists(/databases/$(database)/documents/system_settings/defaults);
     }
-    
-    // ===============================
-    // NOTIFICATIONS - Notificações
-    // ===============================
-    
-    match /notifications/{notificationId} {
-      allow read: if isAuthorizedUser();
-      
+
+    // NOTIFICATIONS
+    match /notifications/{id} {
+      allow read: if isAuthorizedUser() &&
+        (resource.data.targetUser == request.auth.token.email ||
+         resource.data.targetUser == 'all'                      ||
+         isExecutive());
+
       allow create: if isAuthorizedUser();
-      
-      allow update: if isAuthorizedUser();
-      
-      allow delete: if isAuthorizedUser();
+      allow update, delete: if isAuthorizedUser() &&
+                              (resource.data.targetUser == request.auth.token.email ||
+                               isExecutive());
     }
-    
-    // ===============================
-    // OFFLINE_QUEUE - Fila Offline
-    // ===============================
-    
-    match /offline_queue/{queueId} {
+
+    // OFFLINE_QUEUE
+    match /offline_queue/{id} {
+      allow create: if isAuthorizedUser() &&
+                      request.resource.data.user == request.auth.token.email;
+
+      allow read, update, delete: if isAuthorizedUser() &&
+                                    resource.data.user == request.auth.token.email;
+    }
+
+    // REPORTS
+    match /reports/{id} {
+      allow read: if isAuthorizedUser() &&
+                    (isExecutive() || resource.data.segment == getUserSegment());
+
+      allow create: if isAuthorizedUser() &&
+                      (isExecutive() || request.resource.data.segment == getUserSegment());
+
+      allow update, delete: if isAuthorizedUser() &&
+                              (isOwner(resource.data.user) || isExecutive());
+    }
+
+    // CACHE_INVALIDATION
+    match /cache_invalidation/{id} {
       allow read, write: if isAuthorizedUser();
     }
-    
-    // ===============================
-    // REPORTS - Relatórios
-    // ===============================
-    
-    match /reports/{reportId} {
-      allow read: if isAuthorizedUser();
-      
+
+    // BACKUP_DATA
+    match /backup_data/{id} {
+      allow read, write: if isExecutive();
+    }
+
+    // SAMPLE_DATA
+    match /sample_data/{id} {
+      allow read, write: if isAuthorizedUser() &&
+                           (isExecutive() || resource.data.segment == getUserSegment());
+    }
+
+    // INITIALIZATION
+    match /initialization/{id} {
+      allow read, write: if isAuthorizedUser();
+    }
+
+    // ANALYTICS
+    match /analytics/{id} {
+      allow read: if isAuthorizedUser() &&
+                    (isExecutive() || resource.data.segment == getUserSegment());
+
       allow create: if isAuthorizedUser();
-      
-      allow update: if isAuthorizedUser();
-      
-      allow delete: if isAuthorizedUser();
+      allow update, delete: if isExecutive();
     }
-    
-    // ===============================
-    // CACHE_INVALIDATION - Controle de Cache
-    // ===============================
-    
-    match /cache_invalidation/{cacheId} {
-      allow read, write: if isAuthorizedUser();
+
+    // AUDIT_LOGS (imutáveis)
+    match /audit_logs/{id} {
+      allow read:   if isExecutive();
+      allow create: if isAuthorizedUser();
+      allow update, delete: if false;
     }
-    
-    // ===============================
-    // BACKUP_DATA - Dados de Backup
-    // ===============================
-    
-    match /backup_data/{backupId} {
-      allow read, write: if isAuthorizedUser();
-    }
-    
-    // ===============================
-    // SAMPLE_DATA - Dados de Exemplo (Para Auto Setup)
-    // ===============================
-    
-    match /sample_data/{docId} {
-      allow read, write: if isAuthorizedUser();
-    }
-    
-    // ===============================
-    // INITIALIZATION - Inicialização do Sistema
-    // ===============================
-    
-    match /initialization/{docId} {
-      allow read, write: if isAuthorizedUser();
+
+    // Regra catch-all: nega tudo que não casou
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

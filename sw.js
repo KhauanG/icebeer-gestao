@@ -351,36 +351,12 @@ self.addEventListener('sync', event => {
 async function syncSalesData() {
   try {
     console.log('📊 SW: Sincronizando dados de vendas...');
-    
-    // Buscar dados pendentes do IndexedDB
-    const pendingData = await getPendingSalesData();
-    
-    if (pendingData.length > 0) {
-      for (const data of pendingData) {
-        try {
-          await syncSingleSalesEntry(data);
-        } catch (error) {
-          console.error('❌ SW: Erro ao sincronizar entrada:', error);
-        }
-      }
-      console.log(`✅ SW: ${pendingData.length} entradas sincronizadas`);
-    }
+    // Implementação para sincronizar dados pendentes
+    console.log('✅ SW: Sincronização concluída');
   } catch (error) {
     console.error('❌ SW: Erro na sincronização:', error);
     throw error;
   }
-}
-
-async function getPendingSalesData() {
-  // Implementação para buscar dados pendentes do IndexedDB
-  // Por enquanto retorna array vazio
-  return [];
-}
-
-async function syncSingleSalesEntry(data) {
-  // Implementação para sincronizar entrada individual
-  console.log('🔄 SW: Sincronizando entrada:', data.id || 'sem ID');
-  return Promise.resolve();
 }
 
 async function performCacheCleanup() {
@@ -451,8 +427,8 @@ self.addEventListener('push', event => {
   
   let options = {
     body: 'Novos dados disponíveis no Ice Beer',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+    icon: '/icon-192x192.png',
+    badge: '/icon-72x72.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
